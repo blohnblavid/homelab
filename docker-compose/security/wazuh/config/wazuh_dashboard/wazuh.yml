@@ -1,0 +1,8 @@
+hosts:
+  - default:
+      url: "https://wazuh.manager"
+      port: 55000
+      username: wazuh-wui
+      password: "${API_PASSWORD}"
+      run_as: true
+enrollment.dns: "homeserver"

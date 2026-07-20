@@ -1,0 +1,22 @@
+- Infrastructure:
+    - Portainer:
+        href: http://homeserver:9000
+        description: Docker Management
+        icon: portainer.png
+    - Pihole:
+        href: http://homeserver:8090/admin
+        description: DNS & Ad Blocking
+        icon: pi-hole.png
+    - Uptime Kuma:
+        href: http://homeserver:3001
+        description: Uptime Monitor
+        icon: uptime-kuma.png
+        widget:
+          type: uptimekuma
+          url: http://homeserver:3001
+          slug: homeserver
+- Security:
+    - Wazuh:
+        href: https://homeserver:8443
+        description: Security Monitoring
+        icon: wazuh.png

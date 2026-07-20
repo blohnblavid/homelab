@@ -1,0 +1,10 @@
+name: enchants
+services:
+  enchants:
+    build: .
+    container_name: enchants
+    restart: unless-stopped
+    ports:
+      - "3050:3050"
+    volumes:
+      - ./data:/data

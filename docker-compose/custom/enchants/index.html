@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>diamond enchants</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #141414; --bg2: #1e1e1e; --bg3: #272727;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #e2e2e2; --text2: #777;
+    --green: #4ade80; --green-bg: rgba(74,222,128,0.1); --green-border: rgba(74,222,128,0.28);
+    --blue-bg: rgba(96,165,250,0.1); --blue: #60a5fa;
+    --amber-bg: rgba(251,191,36,0.1); --amber: #fbbf24;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; padding: 1.25rem; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 16px; font-weight: 500; margin-bottom: 0.25rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .sync-bar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--border2); flex-shrink: 0; transition: background 0.3s; }
+  .sdot.synced { background: var(--green); } .sdot.syncing { background: var(--amber); } .sdot.error { background: #f87171; }
+  button { background: var(--bg3); border: 0.5px solid var(--border2); color: var(--text2); font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+  button:hover { color: var(--text); background: var(--bg2); }
+  .overall { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; border: 0.5px solid var(--border); background: var(--bg2); margin-bottom: 1.25rem; }
+  .overall-label { font-size: 12px; color: var(--text2); } .overall-count { font-size: 20px; font-weight: 500; color: var(--green); }
+  .pbar { flex: 1; height: 5px; background: var(--border2); border-radius: 99px; overflow: hidden; }
+  .pfill { height: 100%; background: var(--green); border-radius: 99px; transition: width 0.3s; }
+  .section { margin-bottom: 0.875rem; }
+  .section-header { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--bg2); border-radius: 8px; margin-bottom: 5px; cursor: pointer; border: 0.5px solid var(--border); user-select: none; }
+  .section-header:hover { background: var(--bg3); }
+  .section-header h2 { font-size: 13px; font-weight: 500; flex: 1; color: var(--text); }
+  .section-header .prog { font-size: 12px; color: var(--text2); }
+  .chevron { font-size: 14px; color: var(--text2); transition: transform 0.2s; }
+  .section-header.collapsed .chevron { transform: rotate(-90deg); }
+  .items { display: flex; flex-direction: column; gap: 3px; }
+  .items.hidden { display: none; }
+  .item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-radius: 7px; border: 0.5px solid var(--border); background: var(--bg2); cursor: pointer; transition: background 0.1s; }
+  .item:hover { background: var(--bg3); }
+  .item.checked { opacity: 0.4; }
+  .item.checked .ename { text-decoration: line-through; color: var(--green); }
+  .checkbox { width: 17px; height: 17px; border-radius: 4px; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: background 0.1s, border-color 0.1s; }
+  .item.checked .checkbox { background: var(--green-bg); border-color: var(--green-border); }
+  .ename { font-size: 13px; font-weight: 500; color: var(--text); } .edesc { font-size: 11px; color: var(--text2); margin-top: 1px; }
+  .tier { font-size: 11px; padding: 2px 7px; border-radius: 99px; margin-left: auto; flex-shrink: 0; margin-top: 1px; }
+  .tier-max { background: var(--green-bg); color: var(--green); border: 0.5px solid var(--green-border); }
+  .tier-high { background: var(--blue-bg); color: var(--blue); }
+  .tier-mid { background: var(--amber-bg); color: var(--amber); }
+  .sub { font-size: 12px; color: var(--text2); margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div><h1>diamond enchants</h1><p class="sub">shared checklist — checks sync between you and avery</p></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="sync-bar"><div class="sdot" id="sdot"></div><span id="slabel">loading...</span></div>
+    <button onclick="resetAll()">reset all</button>
+  </div>
+</div>
+<div class="overall">
+  <div><div class="overall-label">total progress</div><div class="overall-count" id="overall-count">0 / 0</div></div>
+  <div class="pbar"><div class="pfill" id="pbar" style="width:0%"></div></div>
+</div>
+<div id="sections"></div>
+<script>
+const data = [
+  { id:"helmet", label:"helmet", icon:"ti-shield", items:[
+    { name:"Protection IV", desc:"main damage reduction — highest priority", tier:"max" },
+    { name:"Respiration III", desc:"breathe longer underwater", tier:"max" },
+    { name:"Aqua Affinity I", desc:"mine at normal speed underwater", tier:"max" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" }
+  ]},
+  { id:"chestplate", label:"chestplate", icon:"ti-shield", items:[
+    { name:"Protection IV", desc:"highest damage reduction piece", tier:"max" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" }
+  ]},
+  { id:"leggings", label:"leggings", icon:"ti-shield", items:[
+    { name:"Protection IV", desc:"solid damage reduction", tier:"max" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" },
+    { name:"Swift Sneak III", desc:"move faster while sneaking", tier:"max" }
+  ]},
+  { id:"boots", label:"boots", icon:"ti-shield", items:[
+    { name:"Feather Falling IV", desc:"most important boot enchant — do this first", tier:"max" },
+    { name:"Protection IV", desc:"can conflict with feather falling — use depth strider if needed", tier:"high" },
+    { name:"Depth Strider III", desc:"move faster in water", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" },
+    { name:"Soul Speed III", desc:"fast on soul sand — optional but useful in nether", tier:"mid" }
+  ]},
+  { id:"sword", label:"sword", icon:"ti-sword", items:[
+    { name:"Sharpness V", desc:"core damage boost", tier:"max" },
+    { name:"Looting III", desc:"more drops from mobs", tier:"max" },
+    { name:"Knockback II", desc:"pushes mobs back", tier:"max" },
+    { name:"Fire Aspect II", desc:"sets mobs on fire", tier:"high" },
+    { name:"Sweeping Edge III", desc:"Java only — boosts sweep attacks", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" }
+  ]},
+  { id:"pickaxe", label:"pickaxe", icon:"ti-pick", items:[
+    { name:"Efficiency V", desc:"much faster mining", tier:"max" },
+    { name:"Fortune III", desc:"more drops — great for diamonds/ores", tier:"max" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" },
+    { name:"Silk Touch", desc:"pick up blocks intact — conflicts with Fortune", tier:"mid" }
+  ]},
+  { id:"axe", label:"axe", icon:"ti-axe", items:[
+    { name:"Efficiency V", desc:"faster chopping and decent weapon speed", tier:"max" },
+    { name:"Sharpness V", desc:"high damage — axes hit hard", tier:"max" },
+    { name:"Fortune III", desc:"more drops from leaves/crops", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" }
+  ]},
+  { id:"shovel", label:"shovel", icon:"ti-shovel", items:[
+    { name:"Efficiency V", desc:"fast digging through dirt/sand/gravel", tier:"max" },
+    { name:"Fortune III", desc:"more flint from gravel", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" },
+    { name:"Silk Touch", desc:"pick up grass blocks, mycelium, etc.", tier:"mid" }
+  ]},
+  { id:"bow", label:"bow", icon:"ti-arrows-right-left", items:[
+    { name:"Power V", desc:"core damage boost for arrows", tier:"max" },
+    { name:"Infinity I", desc:"never run out of arrows — keep 1 arrow in inventory", tier:"max" },
+    { name:"Flame I", desc:"sets targets on fire", tier:"max" },
+    { name:"Punch II", desc:"knocks back targets", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" }
+  ]},
+  { id:"trident", label:"trident", icon:"ti-brand-minecraft", items:[
+    { name:"Loyalty III", desc:"returns after throwing", tier:"max" },
+    { name:"Channeling I", desc:"summons lightning during thunderstorms", tier:"high" },
+    { name:"Riptide III", desc:"launches you in rain/water — conflicts with loyalty", tier:"mid" },
+    { name:"Impaling V", desc:"extra damage to aquatic mobs", tier:"high" },
+    { name:"Unbreaking III", desc:"makes it last much longer", tier:"max" },
+    { name:"Mending", desc:"repairs with XP orbs", tier:"max" }
+  ]}
+];
+
+let state = {}, pollTimer = null, lastSaved = '{}';
+
+function sync(s,t){ document.getElementById('sdot').className='sdot '+s; document.getElementById('slabel').textContent=t; }
+function safeId(s,n){ return 'i_'+(s+'_'+n).replace(/[^a-z0-9]/gi,'_'); }
+
+async function load(){
+  try{ const r=await fetch('/state'); state=await r.json(); lastSaved=JSON.stringify(state); sync('synced','synced'); }
+  catch(e){ state={}; sync('error','server unreachable'); }
+  render();
+}
+
+async function save(){
+  const p=JSON.stringify(state); if(p===lastSaved) return;
+  sync('syncing','saving...');
+  try{ await fetch('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:p}); lastSaved=p; sync('synced','synced'); }
+  catch(e){ sync('error','save failed'); }
+}
+
+async function poll(){
+  try{
+    const r=await fetch('/state'); const remote=await r.json(); const rs=JSON.stringify(remote);
+    if(rs!==lastSaved){ state=remote; lastSaved=rs; refreshItems(); updateProgress(); sync('synced','updated'); setTimeout(()=>sync('synced','synced'),2500); }
+  }catch(e){}
+}
+
+function updateProgress(){
+  let total=0,done=0;
+  data.forEach(sec=>{
+    let sd=0;
+    sec.items.forEach(i=>{ total++; if(state[sec.id+'_'+i.name]){done++;sd++;} });
+    const el=document.getElementById('p_'+sec.id); if(el) el.textContent=sd+' / '+sec.items.length;
+  });
+  document.getElementById('overall-count').textContent=done+' / '+total;
+  document.getElementById('pbar').style.width=(total?Math.round(done/total*100):0)+'%';
+}
+
+async function toggle(secId,name){
+  const k=secId+'_'+name; state[k]=!state[k];
+  const el=document.getElementById(safeId(secId,name));
+  if(el){ el.classList.toggle('checked',state[k]); el.querySelector('.checkbox').innerHTML=state[k]?'<i class="ti ti-check" style="font-size:11px;color:var(--green)"></i>':''; }
+  updateProgress(); await save();
+}
+
+function toggleSection(id){
+  document.getElementById('hdr_'+id).classList.toggle('collapsed');
+  document.getElementById('itms_'+id).classList.toggle('hidden');
+}
+
+async function resetAll(){
+  if(!confirm('reset all checks?')) return;
+  state={}; refreshItems(); updateProgress(); await save();
+}
+
+function refreshItems(){
+  data.forEach(sec=>{ sec.items.forEach(item=>{
+    const el=document.getElementById(safeId(sec.id,item.name)); if(!el) return;
+    const c=!!state[sec.id+'_'+item.name]; el.classList.toggle('checked',c);
+    el.querySelector('.checkbox').innerHTML=c?'<i class="ti ti-check" style="font-size:11px;color:var(--green)"></i>':'';
+  }); });
+}
+
+function tierInfo(t){ return t==='max'?['tier-max','must have']:t==='high'?['tier-high','recommended']:['tier-mid','optional']; }
+
+function render(){
+  const c=document.getElementById('sections'); c.innerHTML='';
+  data.forEach(sec=>{
+    const d=document.createElement('div'); d.className='section';
+    d.innerHTML=`<div class="section-header" id="hdr_${sec.id}" onclick="toggleSection('${sec.id}')">
+      <i class="ti ${sec.icon}" aria-hidden="true" style="font-size:15px;color:var(--text2)"></i>
+      <h2>${sec.label}</h2><span class="prog" id="p_${sec.id}">0 / ${sec.items.length}</span>
+      <i class="ti ti-chevron-down chevron" aria-hidden="true"></i></div>
+      <div class="items" id="itms_${sec.id}">${sec.items.map(item=>{
+        const checked=!!state[sec.id+'_'+item.name];
+        const [tc,tl]=tierInfo(item.tier);
+        const sid=safeId(sec.id,item.name);
+        const en=item.name.replace(/'/g,"\\'");
+        return `<div class="item${checked?' checked':''}" id="${sid}" onclick="toggle('${sec.id}','${en}')">
+          <div class="checkbox">${checked?'<i class="ti ti-check" style="font-size:11px;color:var(--green)"></i>':''}</div>
+          <div style="flex:1"><div class="ename">${item.name}</div><div class="edesc">${item.desc}</div></div>
+          <span class="tier ${tc}">${tl}</span></div>`;
+      }).join('')}</div>`;
+    c.appendChild(d);
+  });
+  updateProgress();
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(poll,8000);
+}
+
+load();
+</script>
+</body>
+</html>

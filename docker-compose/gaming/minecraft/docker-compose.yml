@@ -1,0 +1,17 @@
+name: minecraft
+services:
+  minecraft:
+    container_name: minecraft
+    image: itzg/minecraft-server:latest
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    environment:
+      - EULA=TRUE
+      - TYPE=FABRIC
+      - VERSION=26.1.2
+      - MEMORY=4G
+      - EXISTING_OPS_FILE=SYNC
+      - EXISTING_WHITELIST_FILE=SYNC
+    volumes:
+      - ./data:/data

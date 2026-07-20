@@ -1,0 +1,15 @@
+# Template placeholder — the real secret_key is generated at container startup
+# by the entrypoint script in docker-compose.yml, never stored here.
+general:
+  debug: false
+  instance_name: "odysseus-local-search"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+
+server:
+  secret_key: "__SEARXNG_SECRET__"
+  limiter: false
+  image_proxy: true
