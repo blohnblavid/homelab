@@ -61,10 +61,11 @@ anything.
 
 ## The actual root cause
 
-All three symptoms trace back to the same naming collision. The durable fix — still in
-progress — is renaming the Windows computer name to something distinct from the Tailscale
-MagicDNS name, removing the ambiguity at the source rather than continuing to patch around it
-symptom by symptom.
+All three symptoms trace back to the same naming collision. The durable fix was renaming the
+Windows computer name to something distinct from the Tailscale MagicDNS name, removing the 
+ambiguity at the source rather than continuing to patch around it symptom by symptom. Since
+the rename, all three symptoms have stayed resolved — the extra_hosts and 127.0.0.1 patches 
+are now belt-and-suspenders rather than load-bearing.
 
 ## Takeaways
 
@@ -74,7 +75,6 @@ symptom by symptom.
 - **Three symptoms with no obvious surface-level connection can share one root cause.** Chasing
   each one individually (which happened here, initially) costs more time than stepping back and
   asking what's structurally shared across all of them.
-- **Patching each symptom is a legitimate short-term move, but isn't the same as fixing the
-  bug.** The `extra_hosts` and `127.0.0.1` fixes are correct and durable, but the real fix is
-  removing the naming collision that caused all of it — which is why that's still explicitly
-  tracked as unfinished work rather than treated as "done."
+- **Patching each symptom is a legitimate short-term move, but isn't the same as fixing the bug.**
+  The extra_hosts and 127.0.0.1 fixes were correct and durable on their own, but removing the
+  naming collision itself — the actual root cause — was what closed the loop for good.
