@@ -45,3 +45,9 @@ resolution failures across LLMNR/NetBIOS/mDNS depending on which network adapter
 The bug manifested as three unrelated-looking symptoms (broken container DNS, a misconfigured
 Wazuh Filebeat credential, and an agent silently resolving to a link-local IPv6 address) before
 the actual root cause was identified.
+
+## Known issues
+
+**[`docs/known-issues.md`](docs/known-issues.md)** — smaller structural gotchas worth
+knowing about on a rebuild, including a Docker Desktop on Windows networking limitation
+that masks real client IPs behind Pi-hole's dashboard.
