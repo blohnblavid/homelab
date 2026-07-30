@@ -25,7 +25,7 @@ networking, and a SIEM agent all at once. See [`docs/case-study-dns-race.md`](do
 | **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard) | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment |
 | **Infrastructure** | [Pi-hole](docker-compose/infra/), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Uptime Kuma](docker-compose/infra/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, service monitoring |
 | **AI/local inference** | [Odysseus](docker-compose/infra/) — self-hosted AI assistant on local LLMs via Ollama | Experimenting with local-first AI infrastructure, no cloud dependency |
-| **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/) | Because self-hosting shouldn't be all business |
+| **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/), [Palworld](docker-compose/gaming/palworld/) | Because self-hosting shouldn't be all business |
 
 ## Security practices in this repo
 
