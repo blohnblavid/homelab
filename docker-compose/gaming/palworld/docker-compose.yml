@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  palworld:
+    image: thijsvanloef/palworld-server-docker:latest
+    container_name: palworld
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - PORT=8211
+      - PLAYERS=8
+      - MULTITHREADING=true
+      - RCON_ENABLED=true
+      - RCON_PORT=25575
+      - TZ=${TZ}
+      - ADMIN_PASSWORD=${PALWORLD_ADMIN_PASSWORD}
+      - COMMUNITY=false
+      - SERVER_NAME=${PALWORLD_SERVER_NAME}
+      - SERVER_DESCRIPTION=${PALWORLD_SERVER_DESCRIPTION}
+    ports:
+      - "8211:8211/udp"
+      - "25575:25575/tcp"
+    volumes:
+      - ./data:/palworld
