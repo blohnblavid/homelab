@@ -5,7 +5,7 @@ services:
     ports:
       - 3000:3000
     environment:
-      - HOMEPAGE_ALLOWED_HOSTS=homeserver:3000,homepage.lab:3000,homepage.lab
+      - HOMEPAGE_ALLOWED_HOSTS=homeserver:3000,homepage.lab
     volumes:
       - ./config:/app/config
     extra_hosts:

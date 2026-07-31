@@ -4,7 +4,7 @@
 
 Get every device on the tailnet resolving `.lab` hostnames (`homepage.lab`, `sonarr.lab`, etc.) through Pi-hole, as the foundation for a reverse proxy setup with Nginx Proxy Manager. The plan: use Tailscale's DNS settings to point client devices at Pi-hole, running on the K16 mini PC.
 
-This should have been a fifteen-minute config change. It took six distinct fixes, each one masking the next, before it actually worked end to end.
+This should have been a fifteen-minute config change. It took six distinct fixes, each one masking the next, before it actually worked end to end — plus a seventh, once the reverse proxy entered the picture.
 
 ## Symptom 1: DNS timeouts that made no sense
 
@@ -63,6 +63,22 @@ Some self-hosted dashboards validate the incoming `Host` header against an expli
 The fix was to add the new hostname to the app's own allowed-hosts environment variable and recreate the container so the change actually took effect (a plain restart doesn't always reload environment variables, depending on how an app reads them at startup).
 
 A tempting alternative existed: configure the upcoming reverse proxy to rewrite the `Host` header on its way to each backend, so every app would keep seeing only the hostname it already trusted, regardless of what the client actually typed. That would have solved this one case with zero app-side config. It was deliberately set aside — a blanket header rewrite hides a real mismatch rather than resolving it, and it assumes every backend is indifferent to the Host header it receives, which isn't true across every self-hosted app (some use it for callback URLs or absolute links). The safer, more explicit path was to update each app's own allow-list as needed, and only when a given app actually enforces one — most don't.
+
+## Symptom 5: the proxy itself couldn't reach the backend
+
+With DNS and the app's host validation both sorted, the last step was pointing Nginx Proxy Manager at the service so it could be reached without a port number. The first attempt returned a clean `502 Bad Gateway` — a different kind of failure than anything before it. A 502 means the proxy itself is up and answering requests, but couldn't successfully connect to whatever it was told to forward to.
+
+## Root cause #6: containers don't inherit the host's hostnames for free
+
+The proxy was configured to forward to `homeserver`, the same hostname used elsewhere in the stack. But `homeserver` only resolves correctly on the host machine and on containers that have been explicitly told about it — which, in other compose files, was handled with an `extra_hosts: homeserver:host-gateway` entry. The proxy's own container didn't have that mapping, so from its point of view, `homeserver` was just an unresolvable name, and the connection failed before it ever reached the backend.
+
+Pointing the proxy at K16's Tailscale IP directly, instead of the hostname, sidestepped the problem entirely — no name resolution required, no container-specific DNS mapping to remember to add.
+
+**Lesson:** a hostname that resolves fine on the host, or even in one container, doesn't necessarily resolve in another. Each container's DNS view is its own; don't assume a name is portable across the stack just because it's been added once.
+
+## The finish line
+
+With all six fixes in place — the corrected Tailscale IP, Split DNS instead of a global override, the corrected Local DNS Record, a fresh Pi-hole cache, the app's own allowed-hosts entry, and a proxy pointed at an IP rather than an unresolvable hostname — the service loaded cleanly at its plain `.lab` address, no port required. Exactly the outcome the project set out for, six unrelated-looking problems later.
 
 ## What made this hard
 
