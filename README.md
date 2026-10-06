@@ -27,7 +27,7 @@ and an attack-detection exercise that tested what the SIEM actually catches
 | **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard); DVWA — isolated, deliberately vulnerable target, brought up only for test sessions | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
 | **Infrastructure** | [Pi-hole](docker-compose/infra/), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, and self-hosted file sync and sharing as a Google Drive replacement, reached over Tailscale |
 | **Monitoring** | [Uptime Kuma](docker-compose/infra/), Netdata, Healthchecks.io dead-man's-switch with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
-| **AI/local inference** | [Odysseus](docker-compose/infra/) — self-hosted AI assistant on local LLMs via Ollama | Experimenting with local-first AI infrastructure, no cloud dependency |
+| **AI/local inference** | [Odysseus](docker-compose/infra/) — retired local-LLM assistant (Ollama); [homelab assistant](docs/case-study-homelab-assistant.md) — natural-language Q&A over live Netdata data via a hosted LLM | Odysseus was the local-first attempt; the K16's integrated GPU can't run usable local inference (Ollama relies on ROCm, which doesn't support the Radeon 680M), so it was retired in favor of the homelab assistant's swappable hosted-brain design |
 | **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/), [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
 
 ## Security practices in this repo
@@ -62,6 +62,13 @@ and mapped to MITRE ATT&CK; web-form credential brute-forcing was a real blind s
 Netdata for host and container metrics, an external Healthchecks.io alert path with phone
 push, and the Docker Desktop on Windows gotchas hit along the way (host networking, scheduled
 task visibility).
+
+**[A natural-language homelab assistant (v1)](docs/case-study-homelab-assistant.md)** — a
+Python script that answers plain-English questions about the lab's live state. It pulls data
+from Netdata's API, summarizes it in code, and uses a swappable LLM "brain" (Groq's
+OpenAI-compatible API) only for phrasing. Covers the design, a units bug that zeroed every
+memory reading, the privacy trade-off of a hosted model, and a roadmap toward Wazuh
+integration and tool calling.
 
 ## Known issues
 
