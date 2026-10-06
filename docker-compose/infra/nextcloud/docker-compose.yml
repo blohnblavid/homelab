@@ -1,0 +1,80 @@
+# Nextcloud: self-hosted file sync and sharing (Google Drive replacement).
+# Stack: Nextcloud (Apache), MariaDB, Redis, and a cron worker.
+# Copy .env.example to .env and fill in every value before `docker compose up -d`.
+# The web UI is published on host port 8092.
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED
+    environment:
+      MARIADB_ROOT_PASSWORD: ${NC_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: nextcloud
+      MARIADB_USER: nextcloud
+      MARIADB_PASSWORD: ${NC_DB_PASSWORD}
+    volumes:
+      - nextcloud-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - nextcloud-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${NC_REDIS_PASSWORD}
+    networks:
+      - nextcloud-net
+
+  app:
+    image: nextcloud:apache
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8092:80"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: ${NC_DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_HOST_PASSWORD: ${NC_REDIS_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${NC_ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NC_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NC_TRUSTED_DOMAINS}
+      PHP_MEMORY_LIMIT: 1024M
+      PHP_UPLOAD_LIMIT: 16G
+    volumes:
+      - nextcloud-html:/var/www/html
+    networks:
+      - nextcloud-net
+
+  cron:
+    image: nextcloud:apache
+    container_name: nextcloud-cron
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    depends_on:
+      - app
+    volumes:
+      - nextcloud-html:/var/www/html
+    networks:
+      - nextcloud-net
+
+networks:
+  nextcloud-net:
+
+volumes:
+  nextcloud-db:
+  nextcloud-html:
