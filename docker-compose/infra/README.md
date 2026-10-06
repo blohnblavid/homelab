@@ -9,7 +9,7 @@ Core services that everything else depends on.
 | [Portainer](portainer/) | Docker container management and visibility |
 | [Homepage](homepage/) | Unified dashboard for all self-hosted services |
 | [Uptime Kuma](uptimekuma/) | Service uptime monitoring and alerting |
-| [Odysseus](odysseus/) | Self-hosted AI assistant running on local LLMs (Ollama) — no cloud dependency |
+| [Odysseus](odysseus/) | Retired — local-LLM assistant via Ollama (config kept, not running). The K16's Radeon 680M isn't supported by ROCm, so inference was CPU-only and too slow; replaced by the [homelab assistant](../../docs/case-study-homelab-assistant.md) |
 | [Nextcloud](nextcloud/) | Self-hosted file sync and sharing — a Google Drive replacement, reached over Tailscale |
 
 Bring these up first on a fresh deployment — DNS and reverse proxy need to be live before
