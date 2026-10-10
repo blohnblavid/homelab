@@ -2,7 +2,7 @@
 
 ## The goal
 
-Get every device on the tailnet resolving `.lab` hostnames (`homepage.lab`, `sonarr.lab`, etc.) through Pi-hole, as the foundation for a reverse proxy setup with Nginx Proxy Manager. The plan: use Tailscale's DNS settings to point client devices at Pi-hole, running on the K16 mini PC.
+Get every device on the tailnet resolving `.lab` hostnames (`homepage.lab`, `app.lab`, etc.) through Pi-hole, as the foundation for a reverse proxy setup with Nginx Proxy Manager. The plan: use Tailscale's DNS settings to point client devices at Pi-hole, running on the K16 mini PC.
 
 This should have been a fifteen-minute config change. It took six distinct fixes, each one masking the next, before it actually worked end to end — plus a seventh, once the reverse proxy entered the picture.
 

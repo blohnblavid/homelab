@@ -20,17 +20,20 @@ stack. Added the missing pieces:
 - **Custom Projects** (new section): Enchantment Checklist, Ave & John PWA
 - **Gaming** (new section): Minecraft, Palworld
 
-Existing entries (Jellyfin, qBittorrent, Wazuh, Uptime Kuma, etc.) were left untouched. Result:
+Existing entries (media services, Wazuh, Uptime Kuma, etc.) were left untouched. Result:
 one glanceable page that now actually reflects the full running stack, with live widgets
-(Uptime Kuma site count/uptime %, qBittorrent stats) alongside static links for services
+(Uptime Kuma site count/uptime %, download client stats) alongside static links for services
 without a Homepage widget integration.
 
-**Known issue surfaced, not fixed tonight:** the qBittorrent widget authenticates with a
+**Known issue surfaced, not fixed tonight:** one service widget authenticates with a
 plaintext credential written directly in `services.yaml`. The fix is the same pattern used
 everywhere else in this repo: move it into a gitignored `.env` and reference it through
 variable substitution (see [`secrets-approach.md`](secrets-approach.md)). Finding the same
 credential in a third config file is a good reminder to centralize secrets instead of
 patching file by file.
+
+**Resolved 2026-10-10:** the credential was rotated and moved into a gitignored `.env`,
+referenced from `services.yaml` through Homepage's variable substitution.
 
 ## Part 2: Netdata for host + container metrics
 

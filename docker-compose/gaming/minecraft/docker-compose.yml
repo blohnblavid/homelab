@@ -49,7 +49,7 @@ services:
   minecraft-dashboard:
     container_name: minecraft-dashboard
     build: ../../custom/minecraft-dashboard
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "3070:3070"
     # Non-secret config (PORT, RCON_HOST/PORT, LOG_PATH, BLUEMAP_URL) lives next
