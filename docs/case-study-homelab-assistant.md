@@ -36,8 +36,10 @@ Rather than buy a discrete GPU immediately, the design pivoted: separate the "br
   memory stats, then reduces them to a compact text summary.
 - **Language layer (the brain):** gets the summary plus the user's question and phrases the
   answer. Currently `openai/gpt-oss-20b` on Groq's free tier.
-- **Interactive loop:** keep asking questions until you type `quit`. `refresh` pulls a fresh
-  copy of the live data.
+- **Interactive loop:** keep asking questions until you type `quit`. Fetched results are reused
+  for 120 seconds. `refresh` clears that cache, so the next question fetches fresh data; it
+  does not fetch anything itself. (In v1 it re-pulled a startup snapshot; see Part 6 for what
+  replaced that.)
 
 ### The brain is swappable
 
@@ -57,17 +59,52 @@ to a self-hosted model on future dedicated GPU hardware is a config change, not 
 
 ## Part 3: Privacy note: the brain is a third party
 
-With the free hosted brain, **every prompt goes to Groq, along with the server data
-summarized into it.** For resource stats (container names, CPU percentages, memory usage) that's
-an acceptable trade-off. For **Wazuh security data**, which is on the roadmap, it's a different
-question. Security alerts can include hostnames, IPs, usernames, file paths, and details of
-what's vulnerable, and sending all of that to an outside API deserves a deliberate decision
-rather than happening by default.
+With the free hosted brain, **whatever goes into a prompt goes to Groq.** For resource stats
+(container names, CPU percentages, memory usage) that's an acceptable trade-off. For **Wazuh
+security data** it's a different question. Security alerts can include hostnames, IPs,
+usernames, file paths, and details of what's vulnerable, and sending all of that to an outside
+API deserves a deliberate decision rather than happening by default.
 
-The swappable-brain design keeps this open. Before the Wazuh integration, the plan is to
-either move the brain to a self-hosted model on a future discrete GPU (the K16's integrated
-GPU can't do usable local inference; see the Odysseus section above) or carefully limit what
-security data goes into the prompt.
+The plan had two options: move the brain to a self-hosted model on a future discrete GPU (the
+K16's integrated GPU can't do usable local inference; see the Odysseus section above), or
+carefully limit what security data goes into the prompt. When Wazuh went in (Part 6), I took
+the second. This is what the code does now.
+
+**What is held back:**
+
+- **Direct answers send nothing.** When the keywords route a question only to skills whose
+  output is readable as-is (the alerts at a level, CVE findings, top rules, MITRE tags,
+  container stats, Netdata alarms), the script prints that output and makes no LLM call.
+- **Vulnerability findings go out only as a label, a level and a count.** Whenever a skill's
+  output is headed for the LLM, each vulnerability-detector finding is reduced to a line like
+  `L13 VULNERABILITY FINDING, not an attack: 1 CVE`. Package names, installed versions and CVE
+  IDs stay on the machine. The full detail is one direct question away.
+- **Wazuh agent names are replaced by aliases.** Each agent's hostname becomes `agent-N`
+  (taken from its Wazuh agent ID) in both the data and the question before anything is sent.
+  The aliases in the reply are swapped back before printing, so I see real names and Groq
+  never does.
+- **Never sent:** the values in `.env`, the indexer and Netdata addresses, and the text of
+  connection errors (only the error type goes into skill output).
+
+**What still goes out when an LLM call is made:** the question as typed, alert counts, alert
+lines (time, agent alias, rule ID, level, Wazuh's rule description, repeat count), MITRE
+technique names, container names with their CPU and memory figures, and Netdata alarm names
+and values.
+
+**Remaining limits:**
+
+- **Ordinary rule descriptions are sent as written,** and some of them name software. A
+  Windows "application uninstalled" event, for example, carries the product name and version.
+  Only vulnerability-detector findings are redacted.
+- **The attack view sends one example per rule:** the request URL or, failing that, the first
+  80 characters of the log line. That can carry an IP, a username or a path.
+- **The aliasing covers Wazuh agent names only.** Container names, and any hostname that
+  isn't an agent's name, go out as they are.
+
+This was a deliberate tradeoff for a homelab: one user, my own data, and a free hosted model
+I can swap out. In a workplace it would not be my call. Sending SIEM data to an outside LLM
+would need approval first, however much of it is redacted. The swappable-brain design keeps
+the other option open: a self-hosted model would make most of this section unnecessary.
 
 ## Part 4: Gotchas (these cost real time)
 
@@ -109,14 +146,69 @@ by bots within minutes. It's the same approach as everywhere else in the repo (s
 |---|---|---|
 | Only the **top 5 containers** by CPU/memory are sent to the brain | Idle services are invisible. "Is Minecraft running?" can't be answered when the lazymc container is idling and doesn't make the top 5 | Use Netdata's `docker:container-ls` function to get the full container list with presence and status |
 | **No conversation memory** | Each question stands alone, so follow-ups like "and what about yesterday?" don't work | Keep a short message history in the loop |
-| **Data is a snapshot** from startup | Answers go stale unless you type `refresh` | Auto-refresh on each question, or when the snapshot gets older than N seconds |
-| **Wazuh** isn't integrated yet | No security view, which is the SOC-portfolio angle | Feed Wazuh alerts in, *after* settling the privacy question in Part 3 |
+| ~~**Data is a snapshot** from startup~~ | ~~Answers go stale unless you type `refresh`~~ | **Resolved; see Part 6.** Nothing is fetched at startup. Each question fetches what it needs, and results are reused for at most 120 seconds |
+| ~~**Wazuh** isn't integrated yet~~ | ~~No security view, which is the SOC-portfolio angle~~ | **Resolved; see Part 6.** Wazuh alerts come in through skills, with the privacy limits described in Part 3 |
 
-**Eventual goal: tool calling.** Right now the assistant always fetches the same fixed data
-set and sends all of it. With tool calling, the brain chooses what to fetch based on the
-question: container status for "is X running?", Wazuh alerts for "anything suspicious
-today?", and so on. Even then, each tool stays deterministic code I wrote and checked. The
-LLM decides *which* tool to call, never *what the data says*.
+**Eventual goal: tool calling. Done; see Part 6.** The original plan read: right now the
+assistant always fetches the same fixed data set and sends all of it. With tool calling, the
+brain chooses what to fetch based on the question: container status for "is X running?", Wazuh
+alerts for "anything suspicious today?", and so on. Even then, each tool stays deterministic
+code I wrote and checked. The LLM decides *which* tool to call, never *what the data says*.
+
+## Part 6: Skills and hybrid routing
+
+The earlier versions sent one big summary with every question: every count and every section,
+whether or not the question needed it. That costs tokens on every call, and the summary only
+grew as more data went into it. Asking "what was the level 13 alert?" cost 1,193 tokens, most
+of it data the question never touched.
+
+The fix was to split the data work into **skills**: small Python functions that each query one
+thing (alert counts per level, the alerts at one level, attack-group alerts, per-container
+stats, active Netdata alarms, and so on) and return a few compact lines. A question now fetches
+only the skills it needs, and only their output goes to the brain.
+
+```
+  question ──► keyword match in code ──► skill(s) ──► LLM writes the answer
+                    │ no match                ▲
+                    ▼                         │
+          LLM tool-calling picks the skill(s) ┘
+```
+
+Choosing the skills is **hybrid**:
+
+1. **Keywords first.** A regex match in code picks the skill with no LLM call. "level 13"
+   runs `alerts_by_level(13)`; "memory" runs `container_stats`.
+2. **LLM tool-calling as the fallback.** If nothing matches, one extra LLM call picks the
+   skill(s) through tool calling.
+
+Then a single LLM call writes the answer from the chosen skills' output. The script prints
+which skills ran and how they were chosen before each answer, so the routing is visible.
+
+**Result:** the same level 13 question now costs about 700 tokens, down from 1,193.
+
+Keywords go first because the fallback is not free. The routing call spends tokens of its own
+(715 in one measured run), so a question that needs it can cost more than the old single call
+did. The cheap path has to be the common one.
+
+### Direct answers
+
+Many questions are really list requests: "any CVEs I should patch?", "what are the level 8
+alerts?", "what's using the most memory?". A skill's output is already one readable line per
+item, so having the LLM rephrase it buys little and costs a call. Skills whose output reads
+fine as-is are flagged **direct**. When the keywords route a question only to direct skills,
+the script prints the output and stops, with no LLM call.
+
+**Result:** list questions cost 0 tokens and send nothing. That was measured on the three
+questions above. The level 13 question is now one of them too: 1,193 tokens at the start,
+about 700 with skills, 0 now.
+
+Questions that need the LLM still get it. "Anything to note?" runs four skills and has the
+brain write the summary, which cost 891 tokens in one measured run. A question the keywords
+can't place goes to the tool-calling fallback. Part 3 covers what those calls do and don't
+send.
+
+The rule from the Summary still holds. Every skill is deterministic code I wrote and checked.
+The router, whether regex or LLM, decides *which* skill runs, never *what the data says*.
 
 ## Takeaways
 
