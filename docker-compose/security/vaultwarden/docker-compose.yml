@@ -1,0 +1,15 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      - SIGNUPS_ALLOWED=false
+      # Placeholder: replace YOUR-TAILNET with the tailnet's MagicDNS name.
+      # Served over Tailscale HTTPS only; nothing is published to the public internet.
+      - DOMAIN=https://homeserver.YOUR-TAILNET.ts.net
+    volumes:
+      - ./vw-data:/data
+    ports:
+      # Loopback only: Tailscale terminates HTTPS and forwards to this port.
+      - "127.0.0.1:8200:80"

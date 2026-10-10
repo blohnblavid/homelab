@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Minecraft Server &mdash; server dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #191c17;
+    --panel: #21251d;
+    --line: #333a2c;
+    --line-soft: #2a2f23;
+    --text: #e8e6df;
+    --muted: #8b9080;
+    --emerald: #2f9e64;
+    --amber: #e8a33d;
+    --red: #d1553f;
+    --mono: "VT323", "Courier New", monospace;
+    --body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- header ---------- */
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 40px;
+    font-weight: 400;
+    letter-spacing: 1px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .dot {
+    width: 9px;
+    height: 9px;
+    background: var(--muted);
+    flex: none;
+  }
+
+  .status.online .dot { background: var(--emerald); box-shadow: 0 0 8px rgba(47, 158, 100, 0.8); }
+  .status.online  { color: var(--emerald); }
+  .status.offline .dot { background: var(--red); }
+  .status.offline { color: var(--red); }
+
+  .header-meta {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--muted);
+  }
+
+  /* ---------- layout ---------- */
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 16px;
+    padding: 16px 24px 32px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .col { display: grid; gap: 16px; min-width: 0; }
+
+  /* ---------- panels ---------- */
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    min-width: 0;
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--amber);
+  }
+
+  .panel-title .count {
+    font-family: var(--body);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .panel-body { padding: 12px; }
+
+  .empty {
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  /* ---------- players ---------- */
+
+  .player-count {
+    font-family: var(--mono);
+    font-size: 44px;
+    line-height: 1;
+    color: var(--emerald);
+    margin-bottom: 12px;
+  }
+
+  .player-count .max { color: var(--muted); font-size: 26px; }
+
+  ul.players { list-style: none; margin: 0; padding: 0; }
+
+  ul.players li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-left: 2px solid var(--emerald);
+    background: rgba(47, 158, 100, 0.06);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  .avatar {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    background: var(--line);
+    image-rendering: pixelated;
+  }
+
+  /* ---------- events ---------- */
+
+  ul.events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  ul.events li {
+    display: flex;
+    gap: 10px;
+    padding: 5px 8px;
+    border-left: 2px solid var(--line);
+    margin-bottom: 3px;
+    font-size: 13px;
+    align-items: baseline;
+  }
+
+  ul.events li time {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--muted);
+    flex: none;
+  }
+
+  ul.events li .msg { min-width: 0; word-break: break-word; }
+
+  li.ev-join        { border-left-color: var(--emerald); color: var(--emerald); }
+  li.ev-death       { border-left-color: var(--red);     color: var(--red); }
+  li.ev-leave,
+  li.ev-kick        { border-left-color: var(--line);    color: var(--muted); }
+  li.ev-server_start,
+  li.ev-server_stop { border-left-color: var(--amber);   color: var(--amber); }
+
+  /* ---------- bluemap ---------- */
+
+  .map-frame { width: 100%; height: 420px; border: 0; display: block; background: #11130f; }
+
+  .map-placeholder {
+    height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    color: var(--muted);
+    background: #11130f;
+    padding: 24px;
+  }
+
+  .map-placeholder strong {
+    font-family: var(--mono);
+    font-size: 24px;
+    color: var(--amber);
+    font-weight: 400;
+  }
+
+  .map-placeholder code {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 1px 6px;
+  }
+
+  /* ---------- rcon ---------- */
+
+  .console {
+    height: 240px;
+    overflow-y: auto;
+    background: #11130f;
+    border: 1px solid var(--line-soft);
+    padding: 10px;
+    font-family: var(--mono);
+    font-size: 17px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .console .cmd  { color: var(--amber); }
+  .console .out  { color: var(--text); }
+  .console .err  { color: var(--red); }
+  .console .hint { color: var(--muted); }
+  .console div   { margin-bottom: 2px; }
+
+  form.rcon { display: flex; gap: 8px; margin-top: 10px; }
+
+  form.rcon input {
+    flex: 1;
+    min-width: 0;
+    background: #11130f;
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 18px;
+    padding: 7px 10px;
+  }
+
+  form.rcon input:focus { outline: none; border-color: var(--emerald); }
+  form.rcon input::placeholder { color: var(--muted); }
+
+  form.rcon button {
+    background: var(--emerald);
+    border: 1px solid var(--emerald);
+    color: #10130e;
+    font-family: var(--body);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 18px;
+    cursor: pointer;
+  }
+
+  form.rcon button:hover:not(:disabled) { background: #38b374; border-color: #38b374; }
+  form.rcon button:disabled { opacity: 0.45; cursor: default; }
+
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #11130f; }
+  ::-webkit-scrollbar-thumb { background: var(--line); }
+  ::-webkit-scrollbar-thumb:hover { background: #46503a; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Minecraft Server</h1>
+  <div class="status" id="status"><span class="dot"></span><span id="status-text">connecting</span></div>
+  <div class="header-meta" id="last-update">&mdash;</div>
+</header>
+
+<main>
+  <div class="col">
+
+    <section class="panel">
+      <div class="panel-title">players online <span class="count" id="players-note"></span></div>
+      <div class="panel-body">
+        <div class="player-count"><span id="online">0</span><span class="max"> / <span id="max">0</span></span></div>
+        <ul class="players" id="players"></ul>
+        <div class="empty" id="players-empty">nobody online right now</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">recent activity <span class="count" id="events-note"></span></div>
+      <div class="panel-body">
+        <ul class="events" id="events"></ul>
+        <div class="empty" id="events-empty">no events recorded yet</div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="col">
+
+    <section class="panel">
+      <div class="panel-title">bluemap</div>
+      <div id="map-slot">
+        <div class="map-placeholder">
+          <strong>map not configured</strong>
+          <div>Set <code>BLUEMAP_URL</code> in the dashboard environment to embed the live map here.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">rcon console</div>
+      <div class="panel-body">
+        <div class="console" id="console"><div class="hint">RCON console ready. Type a command below (without the leading slash).</div></div>
+        <form class="rcon" id="rcon-form" autocomplete="off">
+          <input id="rcon-input" type="text" placeholder="e.g. time set day" aria-label="RCON command" />
+          <button type="submit" id="rcon-send">Send</button>
+        </form>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var POLL_MS = 5000;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------------- status ---------------- */
+
+  function setStatus(state, text) {
+    $("status").className = "status " + state;
+    $("status-text").textContent = text;
+  }
+
+  function stamp() {
+    $("last-update").textContent = new Date().toLocaleTimeString([], {
+      hour: "2-digit", minute: "2-digit", second: "2-digit"
+    });
+  }
+
+  /* ---------------- players ---------------- */
+
+  function renderPlayers(data) {
+    $("online").textContent = data.online;
+    $("max").textContent = data.max;
+
+    var list = $("players");
+    var names = data.players || [];
+    list.innerHTML = "";
+    $("players-empty").style.display = names.length ? "none" : "block";
+
+    names.forEach(function (name) {
+      var li = document.createElement("li");
+
+      var img = document.createElement("img");
+      img.className = "avatar";
+      img.alt = "";
+      img.loading = "lazy";
+      img.src = "https://mc-heads.net/avatar/" + encodeURIComponent(name) + "/22";
+      img.onerror = function () { img.style.visibility = "hidden"; };
+
+      var span = document.createElement("span");
+      span.textContent = name;
+
+      li.appendChild(img);
+      li.appendChild(span);
+      list.appendChild(li);
+    });
+  }
+
+  function pollPlayers() {
+    fetch("/api/players")
+      .then(function (r) {
+        return r.json().then(function (body) { return { ok: r.ok, body: body }; });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          setStatus("offline", "offline");
+          $("players-note").textContent = (res.body && res.body.error) || "unreachable";
+          return;
+        }
+        setStatus("online", "online");
+        $("players-note").textContent = "";
+        renderPlayers(res.body);
+        stamp();
+      })
+      .catch(function () {
+        setStatus("offline", "dashboard unreachable");
+      });
+  }
+
+  /* ---------------- events ---------------- */
+
+  /* server log lines carry a bare HH:MM:SS; anything else is an ISO stamp */
+  function formatTime(ts) {
+    if (!ts) return "--:--:--";
+    if (/^\d{2}:\d{2}:\d{2}$/.test(ts)) return ts;
+    var d = new Date(ts);
+    return isNaN(d.getTime()) ? ts : d.toLocaleTimeString([], { hour12: false });
+  }
+
+  function renderEvents(list) {
+    var ul = $("events");
+    ul.innerHTML = "";
+    $("events-empty").style.display = list.length ? "none" : "block";
+
+    list.forEach(function (ev) {
+      var li = document.createElement("li");
+      li.className = "ev-" + ev.type;
+
+      var t = document.createElement("time");
+      t.textContent = formatTime(ev.timestamp);
+
+      var msg = document.createElement("span");
+      msg.className = "msg";
+      msg.textContent = ev.message;
+
+      li.appendChild(t);
+      li.appendChild(msg);
+      ul.appendChild(li);
+    });
+  }
+
+  function pollEvents() {
+    fetch("/api/events?limit=50")
+      .then(function (r) { return r.json(); })
+      .then(function (list) {
+        $("events-note").textContent = list.length ? list.length + " shown" : "";
+        renderEvents(list);
+      })
+      .catch(function () { /* leave last good render in place */ });
+  }
+
+  /* ---------------- bluemap ---------------- */
+
+  fetch("/api/config")
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      if (!cfg.blueMapUrl) return;
+      var frame = document.createElement("iframe");
+      frame.className = "map-frame";
+      frame.src = cfg.blueMapUrl;
+      frame.title = "BlueMap";
+      frame.loading = "lazy";
+      $("map-slot").innerHTML = "";
+      $("map-slot").appendChild(frame);
+    })
+    .catch(function () { /* keep placeholder */ });
+
+  /* ---------------- rcon console ---------------- */
+
+  var consoleEl = $("console");
+
+  function log(cls, text) {
+    var div = document.createElement("div");
+    div.className = cls;
+    div.textContent = text;
+    consoleEl.appendChild(div);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  $("rcon-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var input = $("rcon-input");
+    var btn = $("rcon-send");
+    var command = input.value.trim().replace(/^\//, "");
+    if (!command) return;
+
+    log("cmd", "> " + command);
+    input.value = "";
+    input.disabled = btn.disabled = true;
+
+    fetch("/api/rcon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ command: command })
+    })
+      .then(function (r) {
+        return r.json().then(function (body) { return { ok: r.ok, body: body }; });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          log("err", res.body.error + (res.body.detail ? ": " + res.body.detail : ""));
+        } else {
+          var out = (res.body.response || "").trim();
+          log("out", out || "(no output)");
+        }
+      })
+      .catch(function (err) { log("err", "request failed: " + err.message); })
+      .finally(function () {
+        input.disabled = btn.disabled = false;
+        input.focus();
+      });
+  });
+
+  /* ---------------- boot ---------------- */
+
+  pollPlayers();
+  pollEvents();
+  setInterval(pollPlayers, POLL_MS);
+  setInterval(pollEvents, POLL_MS);
+})();
+</script>
+</body>
+</html>

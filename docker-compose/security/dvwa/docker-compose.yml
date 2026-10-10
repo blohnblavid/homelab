@@ -1,0 +1,19 @@
+# DVWA - deliberately vulnerable target for Wazuh detection testing.
+# No restart policy: started by hand for a test session, stays down after a reboot.
+services:
+  dvwa:
+    image: vulnerables/web-dvwa
+    container_name: dvwa
+    ports:
+      # host_ip:host_port:container_port - binding to LAN_IP rather than 0.0.0.0
+      # keeps this off the Tailscale interface.
+      - "${LAN_IP:?set LAN_IP in .env}:8081:80"
+    volumes:
+      # Apache logs on a host path so the Wazuh agent can tail them.
+      - ./logs:/var/log/apache2
+    networks:
+      - dvwa-net
+
+networks:
+  dvwa-net:
+    driver: bridge
