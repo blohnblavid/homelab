@@ -7,6 +7,10 @@
         href: http://homeserver:8090/admin
         description: DNS & Ad Blocking
         icon: pi-hole.png
+    - Nginx Proxy Manager:
+        href: http://homeserver:81
+        description: Reverse Proxy
+        icon: nginx-proxy-manager.png
     - Uptime Kuma:
         href: http://homeserver:3001
         description: Uptime Monitor
@@ -15,8 +19,38 @@
           type: uptimekuma
           url: http://homeserver:3001
           slug: homeserver
+    - Netdata:
+        href: http://homeserver:19999
+        description: System Metrics
+        icon: netdata.png
+    - Immich:
+        href: http://homeserver:2283
+        description: Photo & Video Backup
+        icon: immich.png
 - Security:
     - Wazuh:
         href: https://homeserver:8443
         description: Security Monitoring
         icon: wazuh.png
+    - Vaultwarden:
+        # Placeholder: replace YOUR-TAILNET with the tailnet's MagicDNS name.
+        href: https://homeserver.YOUR-TAILNET.ts.net
+        description: Password Manager
+        icon: vaultwarden.png
+- Custom Projects:
+    - Minecraft Dashboard:
+        href: http://homeserver:3070
+        description: Minecraft Status & RCON
+        icon: mdi-monitor-dashboard
+        widget:
+          type: customapi
+          url: http://homeserver:3070/api/players
+          refreshInterval: 5000
+          method: GET
+          mappings:
+            - field: online
+              label: Online
+              format: text
+            - field: max
+              label: Max Players
+              format: text

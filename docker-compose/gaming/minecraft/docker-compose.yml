@@ -1,17 +1,72 @@
 name: minecraft
+
 services:
-  minecraft:
-    container_name: minecraft
-    image: itzg/minecraft-server:latest
+  lazymc:
+    container_name: lazymc
+    image: ghcr.io/joesturge/lazymc-docker-proxy:latest
     restart: unless-stopped
     ports:
       - "25565:25565"
     environment:
+      - LAZYMC_GROUP=minecraft
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./data:/server:ro
+
+  minecraft:
+    container_name: minecraft
+    image: itzg/minecraft-server:latest
+    restart: "no"
+    labels:
+      - lazymc.enabled=true
+      - lazymc.group=minecraft
+      - lazymc.port=25565
+      - lazymc.server.address=172.25.0.200:25565
+      - lazymc.server.directory=/server
+      - lazymc.time.sleep_after=300
+    networks:
+      default:
+        ipv4_address: 172.25.0.200
+    ports:
+      - "8100:8100"
+    environment:
       - EULA=TRUE
       - TYPE=FABRIC
-      - VERSION=26.1.2
+      - VERSION=26.2
+      - FABRIC_LOADER_VERSION=0.19.3
       - MEMORY=4G
       - EXISTING_OPS_FILE=SYNC
       - EXISTING_WHITELIST_FILE=SYNC
+      - ENABLE_AUTOSTOP=FALSE
+      # RCON is what the dashboard drives. Without an explicit password the image
+      # regenerates a random one into server.properties on every start.
+      - ENABLE_RCON=true
+      - RCON_PORT=25575
+      - RCON_PASSWORD=${RCON_PASSWORD:?set RCON_PASSWORD in minecraft/.env}
     volumes:
       - ./data:/data
+
+  minecraft-dashboard:
+    container_name: minecraft-dashboard
+    build: ../../custom/minecraft-dashboard
+    restart: unless-stopped
+    ports:
+      - "3070:3070"
+    # Non-secret config (PORT, RCON_HOST/PORT, LOG_PATH, BLUEMAP_URL) lives next
+    # to the service, alongside its .env.example.
+    env_file:
+      - ../../custom/minecraft-dashboard/.env
+    environment:
+      # Shared with the minecraft service above, so it stays in minecraft/.env.
+      # Note: `environment:` wins over `env_file:`, so nothing else belongs here.
+      - RCON_PASSWORD=${RCON_PASSWORD:?set RCON_PASSWORD in minecraft/.env}
+    volumes:
+      # Read-only view of the server's real log directory for the event feed.
+      - ./data/logs:/data/logs:ro
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1

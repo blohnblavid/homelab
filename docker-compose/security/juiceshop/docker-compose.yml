@@ -1,0 +1,27 @@
+# OWASP Juice Shop - intentionally vulnerable app for local security testing.
+# Standalone compose project, deliberately not part of the main stack.
+#
+# ISOLATION POSTURE (see README.md):
+#   - No restart policy: must be started by hand for a testing session and stays
+#     down after a reboot. Never let a deliberately vulnerable app auto-start.
+#   - Published on the LAN interface ONLY (LAN_IP), not 0.0.0.0, so it is
+#     not exposed over the Tailscale interface (TAILSCALE_IP).
+#   - Own bridge network, no shared network with any production service.
+#   - Intentionally absent from Nginx Proxy Manager: no .lab hostname, no TLS,
+#     no reverse proxy entry.
+
+services:
+  juiceshop:
+    image: bkimminich/juice-shop
+    container_name: juiceshop
+    restart: "no"
+    ports:
+      # host_ip:host_port:container_port - the host_ip is the isolation control.
+      # Juice Shop listens on 3000 in-container; 3000 on the host is Homepage.
+      - "${LAN_IP:?set LAN_IP in .env}:8082:3000"
+    networks:
+      - juiceshop-net
+
+networks:
+  juiceshop-net:
+    driver: bridge

@@ -24,11 +24,12 @@ and an attack-detection exercise that tested what the SIEM actually catches
 
 | Category | Services | Why it's here |
 |---|---|---|
-| **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard); DVWA — isolated, deliberately vulnerable target, brought up only for test sessions | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
-| **Infrastructure** | [Pi-hole](docker-compose/infra/), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, and self-hosted file sync and sharing as a Google Drive replacement, reached over Tailscale |
-| **Monitoring** | [Uptime Kuma](docker-compose/infra/), Netdata, Healthchecks.io dead-man's-switch with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
+| **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard); [Vaultwarden](docker-compose/security/vaultwarden/) — self-hosted password manager, reached over Tailscale; [DVWA](docker-compose/security/dvwa/) and [Juice Shop](docker-compose/security/juiceshop/) — isolated, deliberately vulnerable targets, brought up only for test sessions | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
+| **Infrastructure** | [Pi-hole](docker-compose/infra/), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/), [Immich](docker-compose/infra/immich/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, self-hosted file sync and sharing as a Google Drive replacement, and photo backup as a Google Photos replacement, reached over Tailscale |
+| **Monitoring** | [Uptime Kuma](docker-compose/infra/), [Netdata](docker-compose/infra/netdata/), Healthchecks.io dead-man's-switch ([ping script](tools/healthcheck/ping.ps1)) with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
 | **AI/local inference** | [Odysseus](docker-compose/infra/) — retired local-LLM assistant (Ollama); [homelab assistant](docs/case-study-homelab-assistant.md) — natural-language Q&A over live Netdata data via a hosted LLM | Odysseus was the local-first attempt; the K16's integrated GPU can't run usable local inference (Ollama relies on ROCm, which doesn't support the Radeon 680M), so it was retired in favor of the homelab assistant's swappable hosted-brain design |
-| **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/), [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
+| **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/) behind a lazymc proxy that starts the server on connect and stops it when idle, [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
+| **Custom** | [Minecraft Dashboard](docker-compose/custom/minecraft-dashboard/) — player list, event feed, and RCON console; [Enchants](docker-compose/custom/enchants/) — enchantment checklist (config kept, currently stopped) | Small apps written for the lab instead of pulled from a registry |
 
 ## Security practices in this repo
 
@@ -40,7 +41,8 @@ and an attack-detection exercise that tested what the SIEM actually catches
 - **Zero-trust remote access** — nothing is port-forwarded to the public internet; all remote
   access goes through Tailscale's WireGuard-based overlay network.
 - **Vulnerable-by-design targets stay contained** — the DVWA test target is kept off the
-  reverse proxy and Tailscale, and only runs when explicitly started.
+  reverse proxy and Tailscale, and only runs when explicitly started. Juice Shop follows the
+  same rules. Both bind their ports to the LAN interface only.
 - **Monitoring that doesn't share fate with the host** — alerting for total host failure comes
   from outside the machine, using outbound pings only and no inbound ports.
 
