@@ -13,8 +13,9 @@ forward to.
 
 RCON is enabled with a pinned password, pulled from a gitignored `.env`, so the
 [Minecraft Dashboard](../custom/minecraft-dashboard/) can read the player list and send
-commands. The dashboard is built from `../custom/minecraft-dashboard/` and runs as a third
-service in the same compose project.
+commands. The dashboard is built from `../custom/minecraft-dashboard/` and is defined as a
+third service in the same compose project. Status: Stopped (config kept). Its service is
+`restart: "no"` and stays down until it is started by hand.
 
 # Palworld server
 
