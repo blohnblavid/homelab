@@ -72,6 +72,11 @@ OpenAI-compatible API) only for phrasing. Covers the design, a units bug that ze
 memory reading, the privacy trade-off of a hosted model, and a roadmap toward Wazuh
 integration and tool calling.
 
+**[Tuning Wazuh alert noise](docs/case-study-wazuh-alert-tuning.md)** — tracing about 2,800
+alerts a day to a scheduled task's batch logons and a USB switcher's re-registering devices,
+then quieting them with four custom rules and one fix at the source. Includes the detection
+tradeoffs each rule accepts and two verification mistakes.
+
 ## Known issues
 
 **[`docs/known-issues.md`](docs/known-issues.md)** — smaller structural gotchas worth

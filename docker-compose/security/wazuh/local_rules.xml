@@ -1,0 +1,63 @@
+<!-- Local rules -->
+
+<!-- Modify it at your will. -->
+<!-- Copyright (C) 2015, Wazuh Inc. -->
+
+<!-- Example -->
+<group name="local,syslog,sshd,">
+
+  <!--
+  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
+  -->
+  <rule id="100001" level="5">
+    <if_sid>5716</if_sid>
+    <srcip>1.1.1.1</srcip>
+    <description>sshd: authentication failed from IP 1.1.1.1.</description>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+  </rule>
+
+</group>
+
+<group name="windows,local,healthcheck_ping,">
+
+  <!-- 1. Scheduled-task (batch) logon for John, requested by Task Scheduler. -->
+  <rule id="100100" level="1">
+    <if_sid>67022</if_sid>
+    <field name="win.eventdata.logonType">^4$</field>
+    <field name="win.eventdata.targetUserName">^John$</field>
+    <field name="win.eventdata.logonProcessName">UBPM</field>
+    <description>Scheduled task logon for John (expected, not alerted).</description>
+  </rule>
+
+  <!-- 2. Special-privileges event within 5 seconds of rule 100100 on the same PC. -->
+  <rule id="100101" level="1" timeframe="5">
+    <if_sid>67028</if_sid>
+    <if_matched_sid>100100</if_matched_sid>
+    <same_field>win.system.computer</same_field>
+    <field name="win.eventdata.subjectUserName">^John$</field>
+    <description>Special privileges for the scheduled task logon (expected, not alerted).</description>
+  </rule>
+
+  <!-- 3. Scheduled-task (batch) logoff for John. -->
+  <rule id="100102" level="1">
+    <if_sid>67023</if_sid>
+    <field name="win.eventdata.logonType">^4$</field>
+    <field name="win.eventdata.targetUserName">^John$</field>
+    <description>Scheduled task logoff for John (expected, not alerted).</description>
+  </rule>
+
+</group>
+
+<group name="windows,local,usb_switcher,">
+
+  <!-- Known devices on the USB switcher: C920 webcam (046D:0892), keyboard
+       (320F:5064), LIGHTSPEED mouse receiver (046D:C539), and the switcher's
+       own hub (35D6:2510 and 35D6:3510). Any other device still alerts at
+       level 8 through rule 60227. -->
+  <rule id="100110" level="3">
+    <if_sid>60227</if_sid>
+    <field name="win.eventdata.deviceId" type="pcre2">(?i)VID_(046D.{1,5}PID_(0892|C539)|320F.{1,5}PID_5064|35D6.{1,5}PID_(2510|3510))</field>
+    <description>Known USB switcher device re-registered (keyboard, mouse receiver, webcam or hub).</description>
+  </rule>
+
+</group>

@@ -14,13 +14,21 @@ SOC analyst practice — log ingestion and analysis, file integrity monitoring, 
 configuration assessment (SCA), and alert triage — alongside Security+ study.
 
 This folder shows the deployment pattern: `docker-compose.yml` and `wazuh.yml` reference every
-credential via environment variable substitution (`${VAR}`), never a literal value. The full
-config set (indexer internal users file, manager ruleset, SSL certs) lives in a private,
-non-public backup — certs in particular regenerate per-deployment and aren't meant to be shared
-or reused across environments.
+credential via environment variable substitution (`${VAR}`), never a literal value. The rest
+of the config set (indexer internal users file, the rest of the manager config, SSL certs) is
+deliberately kept out of the repo and exists only on the host. Certs are regenerated per
+deployment and aren't meant to be shared or reused across environments.
 
 `.env.example` shows the variables needed to stand this up; real values go in a gitignored
 `.env`, same pattern used across every service in this repo.
+
+### Custom rules
+
+[`wazuh/local_rules.xml`](wazuh/local_rules.xml) is an export of the manager's custom rules.
+The live file is in the manager container at `/var/ossec/etc/rules/local_rules.xml` and is
+edited through the dashboard's rules editor. Changes are validated with `wazuh-analysisd -t`
+before restarting the manager. The reasoning behind the rules is in
+[`docs/case-study-wazuh-alert-tuning.md`](../../docs/case-study-wazuh-alert-tuning.md).
 
 ## Vaultwarden
 
