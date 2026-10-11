@@ -73,23 +73,33 @@ the second. This is what the code does now.
 **What is held back:**
 
 - **Direct answers send nothing.** When the keywords route a question only to skills whose
-  output is readable as-is (the alerts at a level, CVE findings, top rules, MITRE tags,
-  container stats, Netdata alarms), the script prints that output and makes no LLM call.
+  output is readable as-is (the alerts at a level or in a range of levels, CVE findings, top
+  rules, MITRE tags, one agent's activity, container stats, Netdata alarms), the script prints
+  that output and makes no LLM call.
+- **Non-questions send nothing.** An input like "ok" or "finished that" gets a fixed reply
+  with no data fetched and no LLM call (Part 7).
 - **Vulnerability findings go out only as a label, a level and a count.** Whenever a skill's
   output is headed for the LLM, each vulnerability-detector finding is reduced to a line like
   `L13 VULNERABILITY FINDING, not an attack: 1 CVE`. Package names, installed versions and CVE
-  IDs stay on the machine. The full detail is one direct question away.
+  IDs stay on the machine. The full detail is one direct question away. Where a skill lists
+  rules by description (top rules, MITRE tags, one agent's activity), a vulnerability-detector
+  rule's description is replaced with "details withheld".
 - **Wazuh agent names are replaced by aliases.** Each agent's hostname becomes `agent-N`
-  (taken from its Wazuh agent ID) in both the data and the question before anything is sent.
-  The aliases in the reply are swapped back before printing, so I see real names and Groq
-  never does.
+  (taken from its Wazuh agent ID) in the data, the question and the remembered conversation
+  before anything is sent. The aliases in the reply are swapped back before printing, so I see
+  real names and Groq never does.
+- **Direct output never enters the conversation memory.** A direct answer is remembered only
+  as a note naming the skills that ran (Part 7).
 - **Never sent:** the values in `.env`, the indexer and Netdata addresses, and the text of
   connection errors (only the error type goes into skill output).
 
 **What still goes out when an LLM call is made:** the question as typed, alert counts, alert
-lines (time, agent alias, rule ID, level, Wazuh's rule description, repeat count), MITRE
-technique names, container names with their CPU and memory figures, and Netdata alarm names
-and values.
+lines (time, agent alias, rule ID, level, Wazuh's rule description, repeat count), one agent's
+alert counts per level and its top five rules (under its alias), MITRE technique names,
+container names with their CPU and memory figures, and Netdata alarm names and values. Two
+things were added in Part 7. Answer calls also carry the last two question/answer pairs,
+aliased and cut to 300 characters each. Every call carries a `reasoning_effort` setting,
+which is a fixed word from my config and holds no data.
 
 **Remaining limits:**
 
@@ -100,6 +110,12 @@ and values.
   80 characters of the log line. That can carry an IP, a username or a path.
 - **The aliasing covers Wazuh agent names only.** Container names, and any hostname that
   isn't an agent's name, go out as they are.
+- **Earlier questions are sent again.** With conversation memory, whatever I typed in the
+  last two questions goes out with the next LLM answer call too, along with the model's own
+  earlier answers.
+- **A follow-up can send what a direct answer kept local.** "Is that worth worrying about?"
+  after a direct answer re-runs the same skills for the LLM. The output goes out redacted and
+  aliased, but it does go out.
 
 This was a deliberate tradeoff for a homelab: one user, my own data, and a free hosted model
 I can swap out. In a workplace it would not be my call. Sending SIEM data to an outside LLM
@@ -145,7 +161,7 @@ by bots within minutes. It's the same approach as everywhere else in the repo (s
 | Limitation | Effect | Next step |
 |---|---|---|
 | Only the **top 5 containers** by CPU/memory are sent to the brain | Idle services are invisible. "Is Minecraft running?" can't be answered when the lazymc container is idling and doesn't make the top 5 | Use Netdata's `docker:container-ls` function to get the full container list with presence and status |
-| **No conversation memory** | Each question stands alone, so follow-ups like "and what about yesterday?" don't work | Keep a short message history in the loop |
+| ~~**No conversation memory**~~ | ~~Each question stands alone, so follow-ups like "and what about yesterday?" don't work~~ | **Resolved; see Part 7.** The last two question/answer pairs go with each LLM answer call, and a follow-up such as "is that worth worrying about?" reuses the previous question's skills. "Yesterday" is still out of reach: every skill reads one fixed time window |
 | ~~**Data is a snapshot** from startup~~ | ~~Answers go stale unless you type `refresh`~~ | **Resolved; see Part 6.** Nothing is fetched at startup. Each question fetches what it needs, and results are reused for at most 120 seconds |
 | ~~**Wazuh** isn't integrated yet~~ | ~~No security view, which is the SOC-portfolio angle~~ | **Resolved; see Part 6.** Wazuh alerts come in through skills, with the privacy limits described in Part 3 |
 
@@ -209,6 +225,96 @@ send.
 
 The rule from the Summary still holds. Every skill is deterministic code I wrote and checked.
 The router, whether regex or LLM, decides *which* skill runs, never *what the data says*.
+
+## Part 7: Modules, tests, memory and reasoning effort
+
+### Split into modules, with tests
+
+The script had grown to about 740 lines in one file. It is now six modules, still started with
+`python homelab_assistant.py`:
+
+| File | Contents |
+|---|---|
+| `homelab_assistant.py` | The chat loop, the answer call, conversation memory |
+| `router.py` | The non-question check, keyword routes, follow-ups, the LLM tool-calling fallback |
+| `skills_wazuh.py`, `skills_netdata.py` | The skills and their helpers |
+| `privacy.py` | Agent aliasing and vulnerability redaction |
+| `common.py` | Config, the Groq client, the indexer query, the skill registry and cache |
+
+The split was meant to change nothing. To check that, I ran the same four questions through
+the old and new code against the live stack and compared the routing, the output of the
+direct answers and the exact text passed to the LLM. They matched.
+
+The pure functions now have pytest tests: 177 of them, covering keyword routing, severity
+bands, level shorthand, the non-question check, follow-ups, the fix-status wording, alias swap
+and swap-back, and redaction. They make no network calls (the test setup blocks `requests`)
+and need neither a `.env` nor a real API key. This is the payoff of keeping the data work in
+code: the parts that decide what is fetched and what is sent can be tested without the LLM.
+
+### New skills
+
+- **`alerts_in_range(min, max)`** backs the severity words, using Wazuh's bands: low 0-6,
+  medium 7-11, high 12-14. "What were the medium alerts?" runs `alerts_in_range(7, 11)`.
+  "Critical" still runs `critical_alerts`, which is level 12 and above.
+- **`agent_activity(agent)`** returns one agent's alert count per level and its top five rules.
+  A question that names a known Wazuh agent routes to it.
+- **Level shorthand.** "The 8s" and "level 8s" now mean level 8.
+
+Both skills are direct, so on their own they cost 0 tokens and send nothing.
+
+### A fixed reply for non-questions
+
+Typing "ok" or "finished that" used to be handled like any other input. In an earlier
+session, "finished that" cost 1,353 tokens (828 for routing, 525 for the answer) for a reply
+nobody needed. Now an input with no "?" that is only acknowledgement words, or that opens
+like a remark about what I did, gets one fixed line. Measured on "finished that" now: no data
+call and no LLM call. The check is narrow on purpose.
+Terse queries such as "cves" or "status" still run, and adding a "?" always makes an input a
+question.
+
+### Conversation memory
+
+The script keeps the last two question/answer pairs.
+
+**What it sends:** on an LLM *answer* call, those pairs go in ahead of the data, each question
+and each answer aliased first and then cut to 300 characters.
+
+**What it does not send:**
+
+- Nothing on a routing call. The tool-calling router still sees only the current question.
+- Nothing on a direct answer, because there is no call.
+- Never a direct answer's output. That output is unredacted, so the memory holds only a note
+  naming the skills that ran.
+- Non-questions and commands are not remembered at all.
+
+Memory alone did not fix follow-ups. It gave the model the earlier question, but the *data*
+for a follow-up was still chosen by the router, which doesn't see the memory. In one run,
+"is that worth worrying about?" went to the LLM router, got the overview counts, and cost
+1,190 tokens (635 for routing, 555 for the answer) for a muddled reply. The fix was a rule in
+code: if a question matches no keyword and refers back with "that", "it", "this", "those" or
+"them", it reuses the previous question's skills and skips the router. After "what about the
+8s?", the same follow-up now re-runs the level 8 alerts and costs 720 tokens with no routing
+call. Its answer always comes from the LLM, so the data goes out redacted (see Part 3).
+
+A new `raw` command prints the skill output behind the last answer, which makes it easy to
+see exactly what the model was given.
+
+### Reasoning effort
+
+`openai/gpt-oss-20b` is a reasoning model, and Groq's docs list a `reasoning_effort` setting
+for it (`low`, `medium`, `high`). The script now sends it on every call, from the
+`GROQ_REASONING_EFFORT` variable, defaulting to `low`. The token line also splits out what the
+API reports: prompt, completion, and the reasoning tokens inside the completion count.
+
+Measured on "anything to note?", three runs each, with the same 554-token prompt:
+
+| Setting | Total tokens | Completion | Of which reasoning |
+|---|---|---|---|
+| Not sent (model default) | 867, 873, 818 | 313, 319, 264 | 97, 219, 51 |
+| `low` | 622, 630, 645 | 68, 76, 91 | 8, 14, 4 |
+
+That is roughly a quarter fewer tokens per answer. About half of the drop is reasoning tokens
+and about half is the answers themselves getting shorter.
 
 ## Takeaways
 

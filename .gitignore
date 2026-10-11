@@ -22,6 +22,10 @@ id_ed25519
 **/cache/
 **/transcodes/
 
+# --- Python caches ---
+__pycache__/
+.pytest_cache/
+
 # --- OS/editor cruft ---
 .DS_Store
 Thumbs.db
