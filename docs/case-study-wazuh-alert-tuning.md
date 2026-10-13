@@ -55,6 +55,17 @@ account:
 </rule>
 ```
 
+The logoff rule is the same match without the logon process, which `4634` does not carry:
+
+```xml
+<rule id="100102" level="1">
+  <if_sid>67023</if_sid>
+  <field name="win.eventdata.logonType">^4$</field>
+  <field name="win.eventdata.targetUserName">^John$</field>
+  <description>Scheduled task logoff for John (expected, not alerted).</description>
+</rule>
+```
+
 The `4672` event has no logon type, so there is nothing in the event itself that separates a
 scheduled-task logon from any other. It is matched only when the batch-logon rule fired on
 the same computer within 5 seconds:
@@ -122,8 +133,34 @@ Any other device still alerts at level 8 through rule `60227`.
 
 ## Result
 
-<!-- TODO: fill in "after" totals (24-hour alert count after tuning). -->
-**TODO: "after" totals to be added.**
+Measured over 24 hours, 2026-10-12 00:05 to 2026-10-13 00:05 (Central), two days after the
+rules went in. That window includes an evening of server maintenance, so it is not a quiet day.
+
+| | Before | After |
+|---|---|---|
+| All alerts | about 2,800 | 501 |
+| Ping-task rules (`67022`, `67028`, `67023`) | about 2,160 | 11 |
+| `60227` new external device | about 590 | 6 |
+
+- None of the 11 remaining logon and logoff alerts follow the 2-minute pattern. They cluster
+  around real sessions on both machines, which is the expected result.
+- Both agents reported throughout the window, so the drop is not a disconnected agent.
+- One burst of 168 alerts from the server around 01:35 was the scheduled file-integrity scan
+  reporting registry changes in bulk (rules `594` and `750`) from a Windows Update servicing
+  run (TrustedInstaller, Volume Shadow Copy and System Restore keys) plus routine Defender,
+  Windows Time and TPM maintenance. Not related to the tuning. This was confirmed by checking
+  `syscheck.path` on the burst rather than assuming it was benign.
+
+A switch test on 2026-10-13 produced 33 alerts under rule `100110` at level 3, which is
+about two switches. Known switcher devices are still matched.
+
+### A gap found while measuring
+
+The 6 remaining `60227` alerts are a Logitech device (`046D:4079`) re-registering through
+the Windows virtual HID framework. In these events `deviceId` is a virtual path
+(`HID\HID_DEVICE_SYSTEM_VHF\...`) and the vendor and product IDs appear only in `vendorIds`,
+so rule `100110` cannot match them. At about 6 a day they are left at level 8 rather than
+widening the rule.
 
 ## Takeaways
 
@@ -136,3 +173,6 @@ Any other device still alerts at level 8 through rule `60227`.
   correlation could hide.
 - **Every lowered rule is a recorded blind spot.** Keeping the rules file and its tradeoffs
   in the repo means the blind spots are documented where the rules are.
+- **Explain the outliers in the "after" numbers too.** A burst that makes up a third of the
+  day needs a cause on record. Checking which registry paths it touched took a minute and
+  turned "probably Windows Update" into a stated fact.
