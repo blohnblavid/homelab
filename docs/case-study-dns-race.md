@@ -59,6 +59,11 @@ skip hostname resolution entirely — use `127.0.0.1` directly. The hostname is 
 for other machines on the network; a service talking to its own host doesn't need to resolve
 anything.
 
+> **Since this was written:** the Wazuh manager moved to a separate Linux host
+> ([`case-study-wazuh-linux-migration.md`](case-study-wazuh-linux-migration.md)), so the K16's
+> agent now points at that host's LAN IP rather than `127.0.0.1`. The rule still applies to any
+> service talking to another service on its own host.
+
 ## The actual root cause
 
 All three symptoms trace back to the same naming collision. The durable fix was renaming the

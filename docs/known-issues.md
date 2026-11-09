@@ -35,9 +35,22 @@ Windows, so the answer here was a second host rather than a network-mode change.
 ## Pi-hole is running but not in use
 
 Pi-hole runs on ubuntu-lab, but no client sends it queries. The router has never handed it
-out as DNS through DHCP, so devices still use the router's DNS. The K16's old Pi-hole
-container was in the same state (it served no live traffic) and has been removed. Pointing
-the router's DHCP DNS at ubuntu-lab is deferred.
+out as DNS through DHCP, so devices still use the router's DNS. Pointing the router's DHCP DNS
+at ubuntu-lab is deferred.
+
+## `.lab` hostnames are down
+
+The `.lab` names for Nginx Proxy Manager (see [`case-study-split-dns.md`](case-study-split-dns.md))
+depended on the K16's Pi-hole: Tailscale Split DNS sent tailnet `.lab` lookups to it, and its
+Local DNS Records answered them. That container was removed in the move to ubuntu-lab, so the
+names no longer resolve. Services are still reachable by host and port.
+
+Bringing them back means recreating the Local DNS Records on ubuntu-lab's Pi-hole and pointing
+Split DNS at ubuntu-lab's Tailscale IP. The records would need to point at the K16, where NPM
+and the services still run.
+
+The review that found the K16 Pi-hole idle (no LAN device used it as DNS) didn't account for
+the Split DNS path, which is how this got missed.
 
 ## Wazuh `data.srcip` keeps the IPv4-mapped prefix
 

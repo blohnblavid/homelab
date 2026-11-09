@@ -17,7 +17,7 @@ resource widgets, search, weather — but `services.yaml` only listed a subset o
 stack. Added the missing pieces:
 
 - **Infrastructure:** Nginx Proxy Manager, Homelable
-- **Custom Projects** (new section): Enchantment Checklist, Ave & John PWA
+- **Custom Projects** (new section): Enchantment Checklist, a custom PWA project
 - **Gaming** (new section): Minecraft, Palworld
 
 Existing entries (Wazuh, Uptime Kuma, etc.) were left untouched. Result:

@@ -6,7 +6,7 @@ which runs on ubuntu-lab.
 | Service | Role |
 |---|---|
 | [Pi-hole](pihole/) | DNS filtering and ad-blocking. Runs on ubuntu-lab, but no clients use it yet: the router doesn't hand it out as DNS |
-| [Nginx Proxy Manager](npm/) | Reverse proxy with automatic Let's Encrypt SSL |
+| [Nginx Proxy Manager](npm/) | Reverse proxy for `.lab` hostnames, with TLS from a self-signed wildcard certificate for `*.lab`. The `.lab` names are currently down; see [known issues](../../docs/known-issues.md) |
 | [Portainer](portainer/) | Docker container management and visibility; bound to the Tailscale IP only |
 | [Homepage](homepage/) | Unified dashboard for all self-hosted services |
 | [Uptime Kuma](uptimekuma/) | Service uptime monitoring and alerting |

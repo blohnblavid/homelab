@@ -118,6 +118,12 @@ routed through it. Pointing the household at it would mean router-level DHCP cha
 risk for every device, with no existing usage to preserve, so that step was deferred. The K16
 container has since been removed.
 
+That review missed one dependency. No LAN device used the K16 Pi-hole as DNS, but Tailscale
+Split DNS sent tailnet `.lab` lookups to it, and its Local DNS Records were what made the `.lab`
+names for Nginx Proxy Manager work. Removing it took those names down. They'll come back once
+the records are recreated on ubuntu-lab's Pi-hole and Split DNS is repointed
+([known issues](known-issues.md)).
+
 ## Dead-man's-switch tuning on slower hardware
 
 `ubuntu-lab` reports to an external Healthchecks.io check, mirroring the K16 setup. It sent
@@ -161,8 +167,9 @@ to updates run by `unattended-upgrade` is safer than disabling them.
 - **Measure before blaming a cause.** The alert false positives had two causes: a config
   mismatch, and slow hardware. A `vmstat` sample put a number on the second (high I/O wait on
   a spinning disk) instead of leaving it as a guess.
-- **An audit can end in "don't flip the switch yet."** The Pi-hole review showed the service
-  had no clients, which avoided a household-wide DNS change with nothing to gain from it.
+- **An audit can end in "don't flip the switch yet," and still miss something.** The Pi-hole
+  review correctly avoided a household-wide DNS change, but it only checked LAN usage. It
+  missed the tailnet's Split DNS path, so removing the old container broke `.lab` names.
 - **Alerts caused by normal maintenance are signal, not noise to delete.** The package-install
   rules fire on routine updates because they can't tell routine from malicious; suppressing
   them blind would remove the detection.

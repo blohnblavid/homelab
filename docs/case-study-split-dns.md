@@ -1,5 +1,10 @@
 # The Split DNS Saga: When Every Layer Was Almost Right
 
+> **Current status:** `.lab` names are down. The K16's Pi-hole held the Local DNS Records that
+> Split DNS pointed at, and it was removed when Pi-hole moved to ubuntu-lab. The records haven't
+> been recreated there yet, and Split DNS still points at the old address. See
+> [`known-issues.md`](known-issues.md).
+
 ## The goal
 
 Get every device on the tailnet resolving `.lab` hostnames (`homepage.lab`, `app.lab`, etc.) through Pi-hole, as the foundation for a reverse proxy setup with Nginx Proxy Manager. The plan: use Tailscale's DNS settings to point client devices at Pi-hole, running on the K16 mini PC.
