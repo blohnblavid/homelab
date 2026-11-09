@@ -10,26 +10,30 @@ networking, and a SIEM agent all at once ([`docs/case-study-dns-race.md`](docs/c
 and an attack-detection exercise that tested what the SIEM actually catches
 ([`docs/case-study-dvwa-attack-detection.md`](docs/case-study-dvwa-attack-detection.md)).
 
-> This is the portfolio version of a larger private setup. Media-management services are
-> intentionally excluded here — this repo focuses on infrastructure, networking, and security
-> tooling, which is the relevant material for the roles I'm applying to.
-
 ## Hardware
 
-- GMKtec NucBox K16 — Ryzen 7 7735HS, 32GB LPDDR5, dual M.2 NVMe, dual 2.5GbE
-- Windows 11 Pro host running Docker Desktop
-- Remote access via Tailscale (zero-trust overlay network, no exposed ports to the public internet)
+Two hosts:
+
+- **K16 (`homeserver`)** — GMKtec NucBox K16: Ryzen 7 7735HS, 32GB LPDDR5, dual M.2 NVMe, dual
+  2.5GbE. Windows 11 Pro running Docker Desktop. Runs most of the stack.
+- **ubuntu-lab** — ASUS Vivo AiO: Core i5-8250U, 1TB HDD. Ubuntu Server 24.04 with native
+  Docker Engine. Runs the security stack (Wazuh, Juice Shop) and Pi-hole: the services that
+  need real client IPs, which Docker Desktop on Windows can't provide
+  ([why](docs/case-study-wazuh-linux-migration.md)).
+
+Remote access to both is via Tailscale (zero-trust overlay network, no exposed ports to the
+public internet).
 
 ## What's running
 
 | Category | Services | Why it's here |
 |---|---|---|
-| **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard); [Vaultwarden](docker-compose/security/vaultwarden/) — self-hosted password manager, reached over Tailscale; [DVWA](docker-compose/security/dvwa/) and [Juice Shop](docker-compose/security/juiceshop/) — isolated, deliberately vulnerable targets, brought up only for test sessions | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
-| **Infrastructure** | [Pi-hole](docker-compose/infra/), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/), [Immich](docker-compose/infra/immich/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, self-hosted file sync and sharing as a Google Drive replacement, and photo backup as a Google Photos replacement, reached over Tailscale |
+| **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard) on ubuntu-lab, with agents on both hosts and the desktop PC; [Juice Shop](docker-compose/security/juiceshop/) — isolated, deliberately vulnerable target on ubuntu-lab, brought up only for test sessions; [Vaultwarden](docker-compose/security/vaultwarden/) — self-hosted password manager, reached over Tailscale | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
+| **Infrastructure** | [Pi-hole](docker-compose/infra/) (on ubuntu-lab, not yet in use), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/), [Immich](docker-compose/infra/immich/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, self-hosted file sync and sharing as a Google Drive replacement, and photo backup as a Google Photos replacement, reached over Tailscale |
 | **Monitoring** | [Uptime Kuma](docker-compose/infra/), [Netdata](docker-compose/infra/netdata/), Healthchecks.io dead-man's-switch ([ping script](tools/healthcheck/ping.ps1)) with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
-| **AI/local inference** | [Odysseus](docker-compose/infra/) — retired local-LLM assistant (Ollama); [homelab assistant](docs/case-study-homelab-assistant.md) — natural-language Q&A over live Netdata data via a hosted LLM | Odysseus was the local-first attempt; the K16's integrated GPU can't run usable local inference (Ollama relies on ROCm, which doesn't support the Radeon 680M), so it was retired in favor of the homelab assistant's swappable hosted-brain design |
-| **Gaming** | [Minecraft (Fabric)](docker-compose/gaming/) behind a lazymc proxy that starts the server on connect and stops it when idle, [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
-| **Custom** | [Minecraft Dashboard](docker-compose/custom/minecraft-dashboard/) — player list, event feed, and RCON console (config kept, currently stopped); [Enchants](docker-compose/custom/enchants/) — enchantment checklist (config kept, currently stopped) | Small apps written for the lab instead of pulled from a registry |
+| **AI/local inference** | [Odysseus](docker-compose/infra/) — retired local-LLM assistant (Ollama); [homelab assistant](docs/case-study-homelab-assistant.md) — natural-language Q&A over live Netdata and Wazuh data via a hosted LLM | Odysseus was the local-first attempt; the K16's integrated GPU can't run usable local inference (Ollama relies on ROCm, which doesn't support the Radeon 680M), so it was retired in favor of the homelab assistant's swappable hosted-brain design |
+| **Gaming** | [Minecraft (NeoForge)](docker-compose/gaming/) behind a lazymc proxy that starts the server on connect and stops it when idle, [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
+| **Custom** | [Enchants](docker-compose/custom/enchants/) — enchantment checklist (config kept, currently stopped) | Small apps written for the lab instead of pulled from a registry |
 
 ## Security practices in this repo
 
@@ -40,9 +44,11 @@ and an attack-detection exercise that tested what the SIEM actually catches
   commit is scanned locally before it's allowed through.
 - **Zero-trust remote access** — nothing is port-forwarded to the public internet; all remote
   access goes through Tailscale's WireGuard-based overlay network.
-- **Vulnerable-by-design targets stay contained** — the DVWA test target is kept off the
-  reverse proxy and Tailscale, and only runs when explicitly started. Juice Shop follows the
-  same rules. Both bind their ports to the LAN interface only.
+- **Vulnerable-by-design targets stay contained** — Juice Shop is kept off the reverse proxy
+  and Tailscale, binds its port to the LAN interface only, and only runs when explicitly
+  started.
+- **Admin UIs stay on the tailnet** — Portainer and Netdata bind to the K16's Tailscale IP, so
+  they aren't reachable from the LAN at all.
 - **Monitoring that doesn't share fate with the host** — alerting for total host failure comes
   from outside the machine, using outbound pings only and no inbound ports.
 
@@ -77,8 +83,19 @@ alerts a day to a scheduled task's batch logons and a USB switcher's re-register
 then quieting them with four custom rules and one fix at the source. Includes the detection
 tradeoffs each rule accepts and two verification mistakes.
 
+**[Moving Wazuh to a Linux host to get real client IPs](docs/case-study-wazuh-linux-migration.md)** —
+Docker Desktop on Windows rewrote every attacker's IP to the bridge gateway, so the SIEM and
+its attack target moved to a second, Linux host. Covers the move, a log source previously
+written off as nonexistent, a before/after test that isolated the cause, and the tradeoffs of
+running a SIEM on old hardware.
+
 ## Known issues
 
 **[`docs/known-issues.md`](docs/known-issues.md)** — smaller structural gotchas worth
-knowing about on a rebuild, including a Docker Desktop on Windows networking limitation
-that masks real client IPs behind Pi-hole's dashboard.
+knowing about on a rebuild, including the Docker Desktop on Windows limitation that masked
+real client IPs, and what is and isn't fixed.
+
+## Archive
+
+**[`archive/`](archive/)** — configs for services that moved or stopped, kept because the
+case studies reference them.

@@ -1,72 +1,46 @@
-name: minecraft
-
-services:
-  lazymc:
-    container_name: lazymc
-    image: ghcr.io/joesturge/lazymc-docker-proxy:latest
-    restart: unless-stopped
-    ports:
-      - "25565:25565"
-    environment:
-      - LAZYMC_GROUP=minecraft
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./data:/server:ro
-
-  minecraft:
-    container_name: minecraft
-    image: itzg/minecraft-server:latest
-    restart: "no"
-    labels:
-      - lazymc.enabled=true
-      - lazymc.group=minecraft
-      - lazymc.port=25565
-      - lazymc.server.address=172.25.0.200:25565
-      - lazymc.server.directory=/server
-      - lazymc.time.sleep_after=300
-    networks:
-      default:
-        ipv4_address: 172.25.0.200
-    ports:
-      - "8100:8100"
-    environment:
-      - EULA=TRUE
-      - TYPE=FABRIC
-      - VERSION=26.2
-      - FABRIC_LOADER_VERSION=0.19.3
-      - MEMORY=4G
-      - EXISTING_OPS_FILE=SYNC
-      - EXISTING_WHITELIST_FILE=SYNC
-      - ENABLE_AUTOSTOP=FALSE
-      # RCON is what the dashboard drives. Without an explicit password the image
-      # regenerates a random one into server.properties on every start.
-      - ENABLE_RCON=true
-      - RCON_PORT=25575
-      - RCON_PASSWORD=${RCON_PASSWORD:?set RCON_PASSWORD in minecraft/.env}
-    volumes:
-      - ./data:/data
-
-  minecraft-dashboard:
-    container_name: minecraft-dashboard
-    build: ../../custom/minecraft-dashboard
-    restart: "no"
-    ports:
-      - "3070:3070"
-    # Non-secret config (PORT, RCON_HOST/PORT, LOG_PATH, BLUEMAP_URL) lives next
-    # to the service, alongside its .env.example.
-    env_file:
-      - ../../custom/minecraft-dashboard/.env
-    environment:
-      # Shared with the minecraft service above, so it stays in minecraft/.env.
-      # Note: `environment:` wins over `env_file:`, so nothing else belongs here.
-      - RCON_PASSWORD=${RCON_PASSWORD:?set RCON_PASSWORD in minecraft/.env}
-    volumes:
-      # Read-only view of the server's real log directory for the event feed.
-      - ./data/logs:/data/logs:ro
-
+# NeoForge Minecraft server behind lazymc. lazymc holds port 25565, starts the
+# server container when a player connects, and stops it again when idle.
 networks:
-  default:
+  mc-net:
+    driver: bridge
     ipam:
       config:
         - subnet: 172.25.0.0/16
-          gateway: 172.25.0.1
+
+services:
+  lazymc:
+    image: ghcr.io/joesturge/lazymc-docker-proxy:latest
+    container_name: lazymc
+    networks:
+      mc-net:
+        ipv4_address: 172.25.0.2
+    restart: unless-stopped
+    ports:
+      - "25565:25565"
+    volumes:
+      - ./data:/server:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  minecraft:
+    image: itzg/minecraft-server
+    container_name: minecraft
+    networks:
+      mc-net:
+        # Fixed address so lazymc knows where to forward.
+        ipv4_address: 172.25.0.3
+    labels:
+      - lazymc.enabled=true
+      - lazymc.group=minecraft
+      - lazymc.server.address=172.25.0.3:25565
+    tty: true
+    stdin_open: true
+    environment:
+      EULA: "TRUE"
+      TYPE: "NEOFORGE"
+      VERSION: "26.3"
+      NEOFORGE_VERSION: "26.3.0.76"
+      MEMORY: "6G"
+    volumes:
+      - ./data:/data
+    # lazymc starts and stops this container; it must not restart on its own.
+    restart: "no"

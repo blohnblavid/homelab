@@ -1,50 +1,46 @@
-\# Known issues \& structural gotchas
+# Known issues & structural gotchas
 
+## Docker Desktop on Windows masks client IPs (fixed by moving to ubuntu-lab)
 
+**Root cause:** Docker Desktop on Windows runs containers inside a WSL2 VM and routes traffic
+to published ports through its own NAT layer. Unlike Docker Engine on native Linux, it doesn't
+preserve the original source IP: every external client reaches the container as the Docker
+bridge gateway address.
 
-\## Pi-hole client IP masked by Docker Desktop (Windows/WSL2)
+**What it broke:**
 
+- **Pi-hole** showed every LAN client as the same gateway IP, so per-client stats and "Top
+  Clients" were useless. DNS resolution and blocking still worked per client (verified with
+  `nslookup` from a client: queries resolved via Pi-hole, blocked domains returned `0.0.0.0`).
+  It was a visibility problem, not a blocking failure.
+- **Wazuh** web-attack alerts all carried the gateway address in `data.srcip`, whatever device
+  actually sent the traffic. This is the more serious of the two: an alert that can't say where
+  the attack came from is much less useful for triage. First seen in the
+  [DVWA exercise](case-study-dvwa-attack-detection.md).
 
+**Fix:** the services that need real client IPs moved to ubuntu-lab, an Ubuntu Server box
+running native Docker Engine. Same request, same client, both hosts:
 
-\*\*Root cause:\*\* Docker Desktop on Windows routes all traffic to published container
+| Host | Juice Shop logged the client as |
+|---|---|
+| K16 (Docker Desktop) | `::ffff:192.168.16.1` — the bridge gateway |
+| ubuntu-lab (Docker Engine) | `::ffff:192.168.1.142` — the real client |
 
-ports through its internal WSL2/NAT layer. Unlike Docker on native Linux, it does not
+Details in [`case-study-wazuh-linux-migration.md`](case-study-wazuh-linux-migration.md).
 
-preserve the original source IP for external clients connecting to a published port.
+**Still true on the K16:** anything left on Docker Desktop that logs client IPs is still
+affected. `macvlan` is the usual workaround on Linux, but it's awkward on Docker Desktop for
+Windows, so the answer here was a second host rather than a network-mode change.
 
+## Pi-hole is running but not in use
 
+Pi-hole runs on ubuntu-lab, but no client sends it queries. The router has never handed it
+out as DNS through DHCP, so devices still use the router's DNS. The K16's old Pi-hole
+container was in the same state (it served no live traffic) and has been removed. Pointing
+the router's DHCP DNS at ubuntu-lab is deferred.
 
-\*\*Symptoms this caused:\*\* Pi-hole's dashboard shows every external client on the LAN
+## Wazuh `data.srcip` keeps the IPv4-mapped prefix
 
-as the same internal Docker gateway IP, rather than each device's real LAN address.
-
-Per-client stats and "Top Clients" breakdowns are effectively useless for anything
-
-running as a published Docker container on Windows.
-
-
-
-\*\*Not a functional problem:\*\* DNS resolution and ad-blocking both work correctly
-
-per-client — verified directly via `nslookup` from the client machine (queries resolve
-
-via Pi-hole's IP; blocked domains return `0.0.0.0`). This is a dashboard visibility
-
-limitation only, not a blocking failure.
-
-
-
-\*\*Not yet resolved:\*\* true per-client visibility would need Pi-hole on a network mode
-
-that preserves real source IPs (e.g. `macvlan`, giving the container its own LAN IP)
-
-— not straightforward with Docker Desktop for Windows the way it is on native Linux.
-
-
-
-\*\*Rule of thumb:\*\* don't rely on Pi-hole's per-client dashboard data for anything
-
-running under Docker Desktop on Windows — it will always attribute traffic to the
-
-Docker gateway IP, not the real device.
-
+Juice Shop logs clients as `::ffff:192.168.1.x`, and Wazuh stores the field as-is. A rule or
+dashboard filter written against a plain IPv4 address won't match. Match on the address
+without anchoring to the start of the field, or strip the prefix in a custom decoder.

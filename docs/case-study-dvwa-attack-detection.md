@@ -1,5 +1,9 @@
 # Case Study: Building and Validating an Attack Detection Pipeline
 
+> **Since this was written:** DVWA has been retired, and Wazuh has moved off the K16 to a Linux
+> host, which fixed the source-IP masking described below. See
+> [`case-study-wazuh-linux-migration.md`](case-study-wazuh-linux-migration.md).
+
 ## Summary
 
 Wazuh had been running in the homelab for weeks, ingesting host-level telemetry — but it had

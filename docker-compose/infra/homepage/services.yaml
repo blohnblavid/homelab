@@ -1,10 +1,13 @@
+# TAILSCALE_IP and UBUNTU_LAB_IP are placeholders for the real addresses.
 - Infrastructure:
     - Portainer:
-        href: http://homeserver:9000
+        # Bound to the K16's Tailscale IP only.
+        href: http://TAILSCALE_IP:9000
         description: Docker Management
         icon: portainer.png
     - Pihole:
-        href: http://homeserver:8090/admin
+        # Runs on ubuntu-lab.
+        href: http://UBUNTU_LAB_IP/admin
         description: DNS & Ad Blocking
         icon: pi-hole.png
     - Nginx Proxy Manager:
@@ -20,7 +23,8 @@
           url: http://homeserver:3001
           slug: homeserver
     - Netdata:
-        href: http://homeserver:19999
+        # Bound to the K16's Tailscale IP only.
+        href: http://TAILSCALE_IP:19999
         description: System Metrics
         icon: netdata.png
     - Immich:
@@ -29,7 +33,8 @@
         icon: immich.png
 - Security:
     - Wazuh:
-        href: https://homeserver:8443
+        # Runs on ubuntu-lab; the dashboard is published on 443.
+        href: https://UBUNTU_LAB_IP
         description: Security Monitoring
         icon: wazuh.png
     - Vaultwarden:
@@ -37,20 +42,3 @@
         href: https://homeserver.YOUR-TAILNET.ts.net
         description: Password Manager
         icon: vaultwarden.png
-- Custom Projects:
-    - Minecraft Dashboard:
-        href: http://homeserver:3070
-        description: Minecraft Status & RCON
-        icon: mdi-monitor-dashboard
-        widget:
-          type: customapi
-          url: http://homeserver:3070/api/players
-          refreshInterval: 5000
-          method: GET
-          mappings:
-            - field: online
-              label: Online
-              format: text
-            - field: max
-              label: Max Players
-              format: text

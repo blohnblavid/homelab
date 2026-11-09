@@ -1,3 +1,5 @@
+# Pi-hole on ubuntu-lab. Running, but no clients use it yet: the router does not
+# hand it out as DNS. See docs/known-issues.md.
 services:
   pihole:
     container_name: pihole
@@ -5,11 +7,11 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "8090:80/tcp"
+      - "80:80/tcp"
     environment:
       TZ: ${TZ}
-      WEBPASSWORD: ${PIHOLE_WEBPASSWORD}
+      FTLCONF_webserver_api_password: ${PIHOLE_WEBPASSWORD}
     volumes:
-      - ./pihole/etc-pihole:/etc/pihole
-      - ./pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+      - ./etc-pihole:/etc/pihole
+      - ./etc-dnsmasq.d:/etc/dnsmasq.d
     restart: unless-stopped

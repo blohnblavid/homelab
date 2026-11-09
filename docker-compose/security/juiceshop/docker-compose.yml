@@ -1,27 +1,23 @@
-# OWASP Juice Shop - intentionally vulnerable app for local security testing.
-# Standalone compose project, deliberately not part of the main stack.
+# OWASP Juice Shop - intentionally vulnerable app for security testing.
+# Runs on ubuntu-lab (native Docker Engine), standalone compose project.
 #
 # ISOLATION POSTURE (see README.md):
-#   - No restart policy: must be started by hand for a testing session and stays
-#     down after a reboot. Never let a deliberately vulnerable app auto-start.
-#   - Published on the LAN interface ONLY (LAN_IP), not 0.0.0.0, so it is
-#     not exposed over the Tailscale interface (TAILSCALE_IP).
-#   - Own bridge network, no shared network with any production service.
-#   - Intentionally absent from Nginx Proxy Manager: no .lab hostname, no TLS,
-#     no reverse proxy entry.
+#   - No restart policy: started by hand for a testing session, stays down
+#     after a reboot. Never let a deliberately vulnerable app auto-start.
+#   - Published on the LAN interface ONLY (LAN_IP), not 0.0.0.0, so it is not
+#     exposed over Tailscale.
+#   - Own compose project, so its default network is shared with no other service.
+#   - Not behind Nginx Proxy Manager: no .lab hostname, no TLS, no proxy entry.
 
 services:
-  juiceshop:
+  juice-shop:
     image: bkimminich/juice-shop
-    container_name: juiceshop
-    restart: "no"
+    container_name: juice-shop
     ports:
       # host_ip:host_port:container_port - the host_ip is the isolation control.
-      # Juice Shop listens on 3000 in-container; 3000 on the host is Homepage.
       - "${LAN_IP:?set LAN_IP in .env}:8082:3000"
-    networks:
-      - juiceshop-net
-
-networks:
-  juiceshop-net:
-    driver: bridge
+    volumes:
+      # Juice Shop writes its per-request access log here (access.log.<date>).
+      # The Wazuh agent on ubuntu-lab tails it from the host path.
+      - /opt/juice-shop/logs:/juice-shop/logs
+    restart: "no"

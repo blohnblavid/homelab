@@ -242,9 +242,11 @@ keyword only get the overview.
 
 ## Where it runs
 
-The defaults assume the script runs on the K16 itself, where Netdata and the Wazuh indexer are
-reachable on `localhost`. To run it from another device, set `NETDATA_URL` and
-`WAZUH_INDEXER_URL` to the K16's tailnet IP instead.
+The script runs on the K16, but neither data source is on `localhost` any more. Netdata is
+bound to the K16's Tailscale IP only, and the Wazuh indexer now runs on ubuntu-lab. Set
+`NETDATA_URL` to `http://TAILSCALE_IP:19999` and `WAZUH_INDEXER_URL` to
+`https://UBUNTU_LAB_IP:9200`. The `localhost` defaults in `common.py` date from when both
+were reachable locally on the K16.
 
 The Wazuh indexer uses a self-signed certificate, so TLS verification is disabled for those
 requests — see the comment in `common.py` for the tradeoff.

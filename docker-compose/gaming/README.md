@@ -1,21 +1,15 @@
 # Minecraft server
 
-A Fabric-modded Minecraft server, containerized with `itzg/minecraft-server`. Whitelist and
-ops files sync from an existing state on container recreate, so the server can be rebuilt
-without losing player permissions.
+A NeoForge-modded Minecraft server (26.3), containerized with `itzg/minecraft-server` and
+running Create: Adapted and AE2. It moved from Fabric to NeoForge to get those mods; the world carried
+over.
 
-The server no longer runs around the clock. [lazymc](https://github.com/joesturge/lazymc-docker-proxy)
+The server doesn't run around the clock. [lazymc](https://github.com/joesturge/lazymc-docker-proxy)
 sits in front of it on port 25565: it starts the server container when a player connects and
-stops it again after five idle minutes, so the 4GB of RAM is only held while someone is
+stops it again once the server is idle, so the 6 GB of RAM is only held while someone is
 actually playing. That is why the `minecraft` service is `restart: "no"` and carries the
 `lazymc.*` labels, and why it has a fixed address on the compose network for the proxy to
-forward to.
-
-RCON is enabled with a pinned password, pulled from a gitignored `.env`, so the
-[Minecraft Dashboard](../custom/minecraft-dashboard/) can read the player list and send
-commands. The dashboard is built from `../custom/minecraft-dashboard/` and is defined as a
-third service in the same compose project. Status: Stopped (config kept). Its service is
-`restart: "no"` and stays down until it is started by hand.
+forward to. The first connection after a sleep takes about a minute while the server boots.
 
 # Palworld server
 

@@ -20,9 +20,9 @@ stack. Added the missing pieces:
 - **Custom Projects** (new section): Enchantment Checklist, Ave & John PWA
 - **Gaming** (new section): Minecraft, Palworld
 
-Existing entries (media services, Wazuh, Uptime Kuma, etc.) were left untouched. Result:
+Existing entries (Wazuh, Uptime Kuma, etc.) were left untouched. Result:
 one glanceable page that now actually reflects the full running stack, with live widgets
-(Uptime Kuma site count/uptime %, download client stats) alongside static links for services
+(Uptime Kuma site count/uptime %) alongside static links for services
 without a Homepage widget integration.
 
 **Known issue surfaced, not fixed tonight:** one service widget authenticates with a
@@ -100,7 +100,7 @@ proc/sys/socket mounts — host networking wasn't actually required for the main
 Working dashboard at `http://<homeserver-ip>:19999` showing:
 - Host-level CPU (per-core), memory, disk I/O, network — real-time and historical
 - Per-container/per-application-group CPU, memory, disk I/O, context switches (Wazuh's Java
-  process, individual `*arr` containers, Netdata itself, etc., each broken out separately)
+  process, individual service containers, Netdata itself, etc., each broken out separately)
 - Built-in anomaly detection and pre-configured health alerts, no manual threshold tuning
 
 One incidental side effect: the CPU chart showed a clear, visible spike corresponding to the

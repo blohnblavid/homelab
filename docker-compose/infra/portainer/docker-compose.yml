@@ -3,8 +3,9 @@ services:
     image: portainer/portainer-ce:latest
     container_name: portainer
     ports:
-      - 9000:9000
-      - 9443:9443
+      # Bound to the K16's Tailscale IP: reachable on the tailnet, not on the LAN.
+      - "${TAILSCALE_IP:?set TAILSCALE_IP in .env}:9000:9000"
+      - "${TAILSCALE_IP:?set TAILSCALE_IP in .env}:9443:9443"
     volumes:
       - portainer_data:/data
       - /var/run/docker.sock:/var/run/docker.sock

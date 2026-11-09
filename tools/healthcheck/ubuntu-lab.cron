@@ -1,0 +1,7 @@
+# Dead-man's-switch ping for ubuntu-lab, installed with `crontab -e` as the
+# login user. Replace <check-uuid> with the check's ping UUID from Healthchecks.io.
+# Treat the full URL as a credential: anyone who has it can keep the check green.
+#
+# -m 20 caps each attempt; --retry 3 rides out a slow Wi-Fi or disk moment.
+# The check is set to a 2-minute period with 2 minutes of grace.
+*/2 * * * * curl -fsS -m 20 --retry 3 https://hc-ping.com/<check-uuid> > /dev/null 2>&1

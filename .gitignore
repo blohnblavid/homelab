@@ -20,7 +20,6 @@ id_ed25519
 **/logs/
 **/*.mca
 **/cache/
-**/transcodes/
 
 # --- Python caches ---
 __pycache__/
