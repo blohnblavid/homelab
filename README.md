@@ -80,7 +80,8 @@ model, including how alert data is aliased and redacted before it leaves the mac
 
 **[Tuning Wazuh alert noise](docs/case-study-wazuh-alert-tuning.md)** — tracing about 2,800
 alerts a day to a scheduled task's batch logons and a USB switcher's re-registering devices,
-then quieting them with four custom rules and one fix at the source. Includes the detection
+then quieting them with custom rules and one fix at the source, plus a follow-up after the
+SIEM moved hosts. Includes the detection
 tradeoffs each rule accepts and two verification mistakes.
 
 **[Moving Wazuh to a Linux host to get real client IPs](docs/case-study-wazuh-linux-migration.md)** —

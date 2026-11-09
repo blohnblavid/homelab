@@ -1,9 +1,5 @@
 <!-- Local rules -->
 
-<!-- Modify it at your will. -->
-<!-- Copyright (C) 2015, Wazuh Inc. -->
-
-<!-- Example -->
 <group name="local,syslog,sshd,">
 
   <!--
@@ -51,13 +47,36 @@
 <group name="windows,local,usb_switcher,">
 
   <!-- Known devices on the USB switcher: C920 webcam (046D:0892), keyboard
-       (320F:5064), LIGHTSPEED mouse receiver (046D:C539), and the switcher's
-       own hub (35D6:2510 and 35D6:3510). Any other device still alerts at
-       level 8 through rule 60227. -->
+       (320F:5064), LIGHTSPEED mouse receiver (046D:C539), the mouse itself as
+       seen directly and by Logitech G HUB (046D:C232), Creative audio device
+       for the speakers (041E:3272), and the switcher's own hub (35D6:2510 and
+       35D6:3510). Any other device still alerts at level 8 through rule 60227. -->
   <rule id="100110" level="3">
     <if_sid>60227</if_sid>
-    <field name="win.eventdata.deviceId" type="pcre2">(?i)VID_(046D.{1,5}PID_(0892|C539)|320F.{1,5}PID_5064|35D6.{1,5}PID_(2510|3510))</field>
-    <description>Known USB switcher device re-registered (keyboard, mouse receiver, webcam or hub).</description>
+    <field name="win.eventdata.deviceId" type="pcre2">(?i)VID_(046D.{1,5}PID_(0892|C539|C232)|320F.{1,5}PID_5064|35D6.{1,5}PID_(2510|3510)|041E.{1,5}PID_3272)</field>
+    <description>Known USB switcher device re-registered (keyboard, mouse, mouse receiver, webcam, speakers or hub).</description>
+  </rule>
+
+  <!-- Software devices Windows re-enumerates at boot: printer queues
+       (SWD\PRINTENUM), network printer discovery (SWD\DAFWSDProvider) and audio
+       endpoints (SWD\MMDEVAPI). None are physical hardware. A real USB device
+       still has its own USB\ or HID\VID_ ID and still alerts at level 8 through
+       rule 60227. -->
+  <rule id="100111" level="3">
+    <if_sid>60227</if_sid>
+    <field name="win.eventdata.deviceId" type="pcre2">(?i)^SWD.{1,2}(PRINTENUM|DAFWSDPROVIDER|MMDEVAPI)</field>
+    <description>Software device enumerated by Windows (printer or audio endpoint).</description>
+  </rule>
+
+  <!-- Virtual HID Framework devices from the Logitech mouse (046D:4079). The
+       deviceId is a generic virtual path, so the real vendor and product are
+       matched in vendorIds instead. Both fields must match: a virtual HID device
+       from any other vendor still alerts at level 8 through rule 60227. -->
+  <rule id="100112" level="3">
+    <if_sid>60227</if_sid>
+    <field name="win.eventdata.deviceId" type="pcre2">(?i)^(VHF|HID).{1,2}HID_DEVICE_SYSTEM_VHF</field>
+    <field name="win.eventdata.vendorIds" type="pcre2">(?i)VID_046D.{1,5}PID_4079</field>
+    <description>Known Logitech virtual HID device re-registered (046D:4079 via VHF).</description>
   </rule>
 
 </group>

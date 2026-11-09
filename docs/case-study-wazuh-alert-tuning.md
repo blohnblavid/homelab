@@ -6,7 +6,8 @@ Wazuh was producing about 2,800 alerts in 24 hours, and most of them came from t
 that had nothing to do with an attack: a scheduled task on the server that logs on every
 2 minutes, and USB and audio devices on the desktop PC that re-register every time an input
 is switched. This session traced each source to its cause, fixed one of them outside Wazuh
-entirely, and wrote four custom rules for the rest.
+entirely, and wrote four custom rules for the rest. A follow-up after the SIEM moved to a
+new host added two more (see [After the move](#after-the-move-to-ubuntu-lab)).
 
 The rules are in [`local_rules.xml`](../docker-compose/security/wazuh/local_rules.xml). Every
 one of them trades some visibility for less noise, and those tradeoffs are listed below
@@ -119,6 +120,11 @@ Any other device still alerts at level 8 through rule `60227`.
   trail of a malicious task running as the same account.
 - **A device spoofing a known vendor/product ID would be lowered too.** The USB rule matches
   on IDs the device reports about itself.
+- **New printers, printer queues and audio endpoints are no longer alerted** (rule `100111`).
+  These are Windows software devices, not hardware, but a new network printer appearing on
+  the LAN would now be recorded at level 3 instead of alerting.
+- **The Logitech virtual HID device could be spoofed the same way** (rule `100112`). It is
+  matched on the vendor and product ID it reports in `vendorIds`.
 - **The 5-second correlation window could hide one real privileges event.** A genuine `4672`
   for the same account, on the same computer, within 5 seconds of a ping run would be matched
   by rule `100101`.
@@ -162,6 +168,62 @@ the Windows virtual HID framework. In these events `deviceId` is a virtual path
 so rule `100110` cannot match them. At about 6 a day they are left at level 8 rather than
 widening the rule.
 
+*Later resolved by rule `100112`, which matches these on `vendorIds`; see below.*
+
+## After the move to ubuntu-lab
+
+The Wazuh manager later moved to a Linux host
+([migration case study](case-study-wazuh-linux-migration.md)), with these rules copied over
+unchanged. On 2026-11-09, rule `60227` was back to 162 alerts in 24 hours, all on the desktop
+PC. Adding `agent.name` and `data.win.eventdata.deviceId` as columns showed three groups, none
+of which the existing rules covered:
+
+- **Two pieces of switcher hardware not in rule `100110`:** the mouse seen directly and by
+  Logitech G HUB (`046D:C232`), and the Creative speakers (`041E:3272`). Both were added to
+  the existing rule.
+- **Software devices from a boot:** a burst of printer queues (`SWD\PRINTENUM`), network
+  printer discovery (`SWD\DAFWSDProvider`) and audio endpoints (`SWD\MMDEVAPI`), all within
+  about two minutes of the PC starting up. New rule `100111`, scoped to those three classes
+  rather than to every `SWD\` device.
+- **The Logitech virtual HID device from the gap above** (`046D:4079`), now matched by new
+  rule `100112`.
+
+Why the count rose from 6 a day to 162 wasn't established. The new rules are:
+
+```xml
+<rule id="100111" level="3">
+  <if_sid>60227</if_sid>
+  <field name="win.eventdata.deviceId" type="pcre2">(?i)^SWD.{1,2}(PRINTENUM|DAFWSDPROVIDER|MMDEVAPI)</field>
+  <description>Software device enumerated by Windows (printer or audio endpoint).</description>
+</rule>
+
+<rule id="100112" level="3">
+  <if_sid>60227</if_sid>
+  <field name="win.eventdata.deviceId" type="pcre2">(?i)^(VHF|HID).{1,2}HID_DEVICE_SYSTEM_VHF</field>
+  <field name="win.eventdata.vendorIds" type="pcre2">(?i)VID_046D.{1,5}PID_4079</field>
+  <description>Known Logitech virtual HID device re-registered (046D:4079 via VHF).</description>
+</rule>
+```
+
+`.{1,2}` stands in for the path separator because the stored `deviceId` carries a doubled
+backslash. In rule `100112` both fields must match, so a virtual HID device from any other
+vendor still alerts at level 8.
+
+### A mistake caught before committing
+
+The first version of `100111` also matched every Virtual HID Framework device, from any
+vendor. That quietly reversed the decision recorded in the gap section above, and it would
+have lowered a software-created fake keyboard from level 8 to 3. It was split into the
+narrower `100111` and `100112` after opening one of the events and finding the real vendor
+in `vendorIds`.
+
+### Verification
+
+A switch of the USB switcher after the change, 2026-11-09 13:04, put every switcher device
+under `100110`, the audio endpoints under `100111` and both virtual HID devices under
+`100112`, with no `60227` alerts in the same window. The `PRINTENUM` and `DAFWSDProvider` parts of `100111`
+only fire on a boot and have not been seen matching yet.
+
 ## Takeaways
 
 - **Find the cause before writing a rule.** Part of the device noise was removed by disabling
@@ -173,6 +235,8 @@ widening the rule.
   correlation could hide.
 - **Every lowered rule is a recorded blind spot.** Keeping the rules file and its tradeoffs
   in the repo means the blind spots are documented where the rules are.
+- **Re-check tuning after the environment changes.** The same rules on a new host met devices
+  they had never been written for.
 - **Explain the outliers in the "after" numbers too.** A burst that makes up a third of the
   day needs a cause on record. Checking which registry paths it touched took a minute and
   turned "probably Windows Update" into a stated fact.
