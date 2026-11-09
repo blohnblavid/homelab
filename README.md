@@ -1,7 +1,7 @@
 # Homelab
 
-A self-hosted infrastructure project built on a Ryzen 7 mini PC, run as a real production
-environment — not a tutorial follow-along. Built for two purposes: a genuinely useful home
+A self-hosted infrastructure project running on two machines (a Ryzen 7 mini PC and a Linux
+security box), run as a real production environment — not a tutorial follow-along. Built for two purposes: a genuinely useful home
 server, and hands-on practice for SOC analyst / IT support work (alongside Security+ study).
 
 This repo documents the architecture, the security tooling, and — maybe most usefully — the
@@ -29,8 +29,8 @@ public internet).
 | Category | Services | Why it's here |
 |---|---|---|
 | **Security** | [Wazuh](docker-compose/security/) — SIEM/XDR (manager, indexer, dashboard) on ubuntu-lab, with agents on both hosts and the desktop PC; [Juice Shop](docker-compose/security/juiceshop/) — isolated, deliberately vulnerable target on ubuntu-lab, brought up only for test sessions; [Vaultwarden](docker-compose/security/vaultwarden/) — self-hosted password manager, reached over Tailscale | Active SOC analyst practice: log ingestion, alert triage, file integrity monitoring, security configuration assessment, and validating detections against real attack traffic |
-| **Infrastructure** | [Pi-hole](docker-compose/infra/) (on ubuntu-lab, not yet in use), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/), [Immich](docker-compose/infra/immich/) | Network-wide DNS filtering, reverse proxy, container orchestration visibility, a single-page dashboard, self-hosted file sync and sharing as a Google Drive replacement, and photo backup as a Google Photos replacement, reached over Tailscale |
-| **Monitoring** | [Uptime Kuma](docker-compose/infra/), [Netdata](docker-compose/infra/netdata/), Healthchecks.io dead-man's-switch ([ping script](tools/healthcheck/ping.ps1)) with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
+| **Infrastructure** | [Pi-hole](docker-compose/infra/) (on ubuntu-lab, not yet in use), [Nginx Proxy Manager](docker-compose/infra/), [Portainer](docker-compose/infra/), [Homepage](docker-compose/infra/), [Nextcloud](docker-compose/infra/), [Immich](docker-compose/infra/immich/) | DNS filtering (deployed, not yet in use), reverse proxy, container orchestration visibility, a single-page dashboard, self-hosted file sync and sharing as a Google Drive replacement, and photo backup as a Google Photos replacement, reached over Tailscale |
+| **Monitoring** | [Uptime Kuma](docker-compose/infra/), [Netdata](docker-compose/infra/netdata/), Healthchecks.io dead-man's-switch for each host ([K16 ping script](tools/healthcheck/ping.ps1), [ubuntu-lab cron](tools/healthcheck/ubuntu-lab.cron)) with ntfy push alerts | Service uptime, host and per-container metrics with history, and an external alert path that still works if the whole host goes down |
 | **AI/local inference** | [Odysseus](docker-compose/infra/) — retired local-LLM assistant (Ollama); [homelab assistant](docs/case-study-homelab-assistant.md) — natural-language Q&A over live Netdata and Wazuh data via a hosted LLM | Odysseus was the local-first attempt; the K16's integrated GPU can't run usable local inference (Ollama relies on ROCm, which doesn't support the Radeon 680M), so it was retired in favor of the homelab assistant's swappable hosted-brain design |
 | **Gaming** | [Minecraft (NeoForge)](docker-compose/gaming/) behind a lazymc proxy that starts the server on connect and stops it when idle, [Palworld](docker-compose/gaming/palworld/) (config kept, currently stopped) | Because self-hosting shouldn't be all business |
 | **Custom** | [Enchants](docker-compose/custom/enchants/) — enchantment checklist (config kept, currently stopped) | Small apps written for the lab instead of pulled from a registry |
@@ -71,12 +71,12 @@ Netdata for host and container metrics, an external Healthchecks.io alert path w
 push, and the Docker Desktop on Windows gotchas hit along the way (host networking, scheduled
 task visibility).
 
-**[A natural-language homelab assistant (v1)](docs/case-study-homelab-assistant.md)** — a
-Python script that answers plain-English questions about the lab's live state. It pulls data
-from Netdata's API, summarizes it in code, and uses a swappable LLM "brain" (Groq's
-OpenAI-compatible API) only for phrasing. Covers the design, a units bug that zeroed every
-memory reading, the privacy trade-off of a hosted model, and a roadmap toward Wazuh
-integration and tool calling.
+**[A natural-language homelab assistant](docs/case-study-homelab-assistant.md)** — a Python
+script that answers plain-English questions about the lab's live state from Netdata and Wazuh.
+A skills router answers many questions in code with no LLM call, and falls back to tool calling
+on a swappable LLM "brain" (Groq's OpenAI-compatible API) only when it has to. Covers the
+design, a units bug that zeroed every memory reading, and the privacy trade-off of a hosted
+model, including how alert data is aliased and redacted before it leaves the machine.
 
 **[Tuning Wazuh alert noise](docs/case-study-wazuh-alert-tuning.md)** — tracing about 2,800
 alerts a day to a scheduled task's batch logons and a USB switcher's re-registering devices,

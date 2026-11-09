@@ -15,5 +15,4 @@ which runs on ubuntu-lab.
 | [Nextcloud](nextcloud/) | Self-hosted file sync and sharing — a Google Drive replacement, reached over Tailscale |
 | [Immich](immich/) | Self-hosted photo and video backup (server, machine learning, Postgres, Valkey) — a Google Photos replacement |
 
-Bring these up first on a fresh deployment — DNS and reverse proxy need to be live before
-anything that depends on them.
+On a fresh deployment, bring Nginx Proxy Manager up before the services behind it.
